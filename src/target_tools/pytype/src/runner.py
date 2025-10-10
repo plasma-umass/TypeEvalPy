@@ -37,11 +37,12 @@ def process_file(module, file):
     for node in ast.walk(module):
         if isinstance(node, ast.ClassDef):
             current_class = node.name
-        if hasattr(node, "resolved_type"):
+        if hasattr(node, "resolved_annotation"):
             if isinstance(node, ast.FunctionDef):
                 function = {
                     "file": file,
                     "line_number": node.lineno,
+                    "col_offset": param.col_offset,
                     "function": node.name,
                     "type": [node.resolved_annotation],
                 }
@@ -52,6 +53,7 @@ def process_file(module, file):
                     parameter = {
                         "file": file,
                         "line_number": param.lineno,
+                        "col_offset": param.col_offset,
                         "parameter": param.arg,
                         "function": node.name,
                         "type": [param.annotation],
@@ -63,6 +65,7 @@ def process_file(module, file):
                 attribute = {
                     "file": file,
                     "line_number": node.lineno,
+                    "col_offset": node.col_offset,
                     "variable": node.attr,
                     "type": [node.resolved_annotation],
                 }
@@ -74,6 +77,7 @@ def process_file(module, file):
                 variable = {
                     "file": file,
                     "line_number": node.lineno,
+                    "col_offset": node.col_offset,
                     "variable": node.id,
                     "type": [node.resolved_annotation],
                 }
@@ -91,6 +95,7 @@ def main_runner(args):
     error_count = 0
     pytype_options = config.Options.create(python_version=(3, 10))
     for file in python_files:
+        print(f"Processing {file}")
         try:
             dir_path, file_name = os.path.split(file)
             source = open(file).read()

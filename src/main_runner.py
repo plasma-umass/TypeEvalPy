@@ -21,6 +21,7 @@ from runner_class import (
     PyrightRunner,
     ScalpelRunner,
     Type4pyRunner,
+    PytypeRunner,
     LLMRunner,
 )
 from utils import FileHandler
@@ -164,8 +165,15 @@ def main():
                 "config": config,
             },
         ),
+        "pytype": (
+            PytypeRunner,
+            {
+                "debug": False,
+                "nocache": args.nocache,
+                "custom_benchmark_dir": args.custom_benchmark_dir,
+            },
+        ),
         # PySonar2Runner,
-        # PytypeRunner,
         # PyreRunner,
     }
 
