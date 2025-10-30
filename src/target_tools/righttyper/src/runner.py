@@ -37,7 +37,7 @@ def process_file(file_path, benchmark_path):
     # using Python 3.10 syntax avoids typing.Self, which TypeEvalPy doesn't expect
     subprocess.run(
         [sys.executable, "-m", "righttyper",
-         "--no-output-files", "--json-output",
+         "--no-output-files", "--json-output", "--no-use-multiprocessing",
          "--no-sampling", "--use-top-pct=100", "--no-simplify-type-sets",
          "--python-version=3.10",
          "--root", benchmark_path, file_path],

@@ -1,1 +1,1 @@
-git+https://github.com/RightTyper/RightTyper.git@for_TypeEvalPy
+git+https://github.com/RightTyper/RightTyper.git@202510-variable-support

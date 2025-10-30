@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
 
+from codeindex import ModuleIndex
+
 # ---------------- Type string normalization ----------------
 
 _RENDER_MODULE = cst.Module(body=())
@@ -20,6 +22,7 @@ _NAME_MAP = {
     'typing.Callable': 'callable',
     'typing.Iterator': 'generator',
     'typing.Type': 'type',
+    'types.CodeType': 'code',
     'None': 'Nonetype',
 }
 
@@ -116,106 +119,6 @@ def normalize_types(type_str: str, *, strip_generics: bool = False) -> list[str]
     return out
 
 
-# ---------------- AST utilities ----------------
-
-import ast
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
-class FuncIndex(ast.NodeVisitor):
-    """
-    Index positions for functions and methods by qualified name.
-
-    Keys look like:
-      - "func" for top-level functions
-      - "MyClass.method" for methods
-      - "outer.inner" for nested functions
-      - "MyClass.method.inner" for nested functions inside methods
-
-    Stored (0-based cols):
-      - func_params[qname][param] -> (lineno, col)
-      - func_name_pos[qname] -> (lineno, col_of_function_name)
-    """
-
-    def __init__(self, src: str):
-        self.func_params: Dict[str, Dict[str, Tuple[int, int]]] = {}
-        self.func_name_pos: Dict[str, Tuple[int, int]] = {}
-        self._lines = src.splitlines()
-        self._name_stack: List[str] = []
-
-    def _qualified(self, name: str) -> str:
-        parts: List[str] = self._name_stack + [name]
-        return ".".join(parts)
-
-    def visit_ClassDef(self, node: ast.ClassDef):
-        self._name_stack.append(node.name)
-        self.generic_visit(node)
-        self._name_stack.pop()
-
-    def visit_FunctionDef(self, node: ast.FunctionDef):
-        self._record_function(node)
-        self._name_stack.append(node.name)
-        self.generic_visit(node)
-        self._name_stack.pop()
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        self._record_function(node)
-        self._name_stack.append(node.name)
-        self.generic_visit(node)
-        self._name_stack.pop()
-
-    def _record_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
-        qname = self._qualified(node.name)
-
-        # Collect parameter positions
-        param_map: Dict[str, Tuple[int, int]] = {}
-
-        def add_arg(a: Optional[ast.arg]):
-            if not a:
-                return
-            ln = getattr(a, "lineno", getattr(node, "lineno", 1))
-            co = getattr(a, "col_offset", getattr(node, "col_offset", 0))
-            param_map[a.arg] = (ln, co)
-
-        args = getattr(node, "args", None)
-        if args:
-            for a in getattr(args, "posonlyargs", []):
-                add_arg(a)
-            for a in getattr(args, "args", []):
-                add_arg(a)
-            add_arg(getattr(args, "vararg", None))
-            for a in getattr(args, "kwonlyargs", []):
-                add_arg(a)
-            add_arg(getattr(args, "kwarg", None))
-
-        self.func_params[qname] = param_map
-
-        # Use the column where the function name begins (not 'def' / 'async')
-        lineno = getattr(node, "lineno", 1)
-        line = self._lines[lineno - 1] if 1 <= lineno <= len(self._lines) else ""
-        def_col = getattr(node, "col_offset", 0)
-
-        search_start = max(def_col - 2, 0)
-        def_index = line.find("def", search_start)
-        if def_index == -1:
-            def_index = line.find("def")
-
-        name_index = -1
-        if def_index != -1:
-            name_index = line.find(node.name, def_index + 3)
-        if name_index == -1:
-            name_index = def_col  # fallback
-
-        self.func_name_pos[qname] = (lineno, name_index)
-
-
-def index_functions(file_path: Path) -> FuncIndex:
-    src = file_path.read_text(encoding="utf-8")
-    tree = ast.parse(src, filename=str(file_path))
-    idx = FuncIndex(src)
-    idx.visit(tree)
-    return idx
-
 # ---------------- Core processing ----------------
 
 def simplify_path(file_str: str, root: Path|None = None) -> str:
@@ -231,65 +134,121 @@ def simplify_path(file_str: str, root: Path|None = None) -> str:
     except ValueError:
         return str(p)
 
+
 def process_annotations(spec: dict, root: Path|None = None, *, strip_generics: bool = False) -> List[dict]:
     out: List[dict] = []
 
-    files = spec.get("files", {})
-    if not isinstance(files, dict):
-        raise ValueError('Top-level must contain "files": { ... }')
-
-    for file_str, file_info in files.items():
+    for file_str, file_info in spec.get("files", {}).items():
         file_path = Path(file_str)
         if not file_path.exists():
             print(f"warning: {file_path} does not exist; skipping", file=sys.stderr)
             continue
 
         try:
-            idx = index_functions(file_path)
-        except SyntaxError as e:
+            idx = ModuleIndex.from_source(file_path.read_text(encoding="utf-8"))
+        except cst.ParserSyntaxError as e:
             print(f"error: cannot parse {file_path}: {e}", file=sys.stderr)
-            continue
-
-        functions = (file_info or {}).get("functions", {})
-        if not isinstance(functions, dict):
             continue
 
         simplified_file = simplify_path(file_str, root)
 
-        for func_name, fdesc in functions.items():
-            if not isinstance(fdesc, dict):
+        def add_item(type_str: str, info: dict) -> None:
+            out.append({
+                "file": simplified_file,
+                **info,
+                "type": normalize_types(type_str, strip_generics=strip_generics)
+            })
+
+        functions = file_info.get("functions", {})
+
+        # RightTyper only indicates object attributes where they are annotated, but
+        # TypeEvalPy sometimes expects them in other code locations where they appear.
+        # To work around that, we copy these across methods... this code has some issues:
+        # (1) it assumes 'self' is named the same everywhere;
+        # (2) it assumes both functions are methods (not functions nested within methods).
+        for func_name, func_info in list(functions.items()):
+            variables = func_info.get("vars", {})
+            if not (attrs := {
+                varname: vartype
+                for varname, vartype in variables.items()
+                if '.' in varname
+            }):
                 continue
 
-            func_ln, func_name_col = idx.func_name_pos.get(func_name, (1, 0))
+            func_name_base = '.'.join(func_name.split('.')[:-1]) + '.'
+            for func_name2 in functions:
+                if func_name2 == func_name or not func_name2.startswith(func_name_base):
+                    continue
+
+                functions[func_name2]['vars'] = attrs | functions[func_name2].get('vars', {})
+
+        for func_name, func_info in functions.items():
+            assert isinstance(func_info, dict)
+
+            if not (func_idx := idx.functions.get(func_name)):
+                if func_name != '<lambda>':
+                    print(f"Function '{func_name}' not found in index")
+                continue
 
             # Parameters
-            args_desc = fdesc.get("args", {})
-            if isinstance(args_desc, dict):
-                for param_name, type_str in args_desc.items():
-                    types = normalize_types(str(type_str), strip_generics=strip_generics)
-                    ln, co = idx.func_params.get(func_name, {}).get(
-                        param_name,
-                        (func_ln, func_name_col),
-                    )
-                    out.append({
-                        "file": simplified_file,
-                        "line_number": ln,
-                        "col_offset": co+1,
-                        "function": func_name,
-                        "parameter": param_name,
-                        "type": types,
-                    })
+            for name, type_str in func_info.get("args", {}).items():
+                if not (pos := func_idx.params.get(name)):
+                    continue
+
+                add_item(type_str, pos.to_item() | {
+                    "function": func_name,
+                    "parameter": name,
+                })
+
+                # Also emit as variables (they'll be there if assigned to)
+                if (pos_list := func_idx.vars.get(name)):
+                    for pos in pos_list:
+                        add_item(type_str, pos.to_item() | {
+                            "function": func_name,
+                            "variable": name,
+                        })
 
             # Function return
-            retval = fdesc.get("retval")
-            if retval is not None:
-                types = normalize_types(str(retval), strip_generics=strip_generics)
-                out.append({
-                    "file": simplified_file,
-                    "line_number": func_ln,
-                    "col_offset": func_name_col+1,
+            if (retval := func_info.get("retval")) is not None:
+                add_item(retval, func_idx.pos.to_item() | {
                     "function": func_name,
-                    "type": types,
+                })
+
+            # Variables
+            for name, type_str in func_info.get("vars", {}).items():
+                if func_idx.params.get(name):
+                    continue    # already emitted above
+
+                if not (pos_list := func_idx.vars.get(name)):
+#                    # emit without position... could be from a compiled string
+#                    add_item(type_str, {
+#                        "function": func_name,
+#                        "variable": name,
+#                    })
+                    continue
+
+                # Emit it for every position in the code...  not sure why the benchmark
+                # asks for multiple locations within the same scope.
+                for pos in pos_list:
+                    add_item(type_str, pos.to_item() | {
+                        "function": func_name,
+                        "variable": name,
+                    })
+
+        # Module variables
+        for name, type_str in file_info.get("vars", {}).items():
+            if not (pos_list := idx.module_vars.get(name)):
+#                # emit without position... could be from a compiled string
+#                add_item(type_str, {
+#                    "variable": name,
+#                })
+                continue
+
+            # Emit it for every position in the code...  not sure why the benchmark
+            # asks for multiple locations within the same scope.
+            for pos in pos_list:
+                add_item(type_str, pos.to_item() | {
+                    "variable": name,
                 })
 
     return out
@@ -306,7 +265,7 @@ def main():
     spec_path = Path(args.input_json)
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
 
-    records = process_annotations(spec)
+    records = process_annotations(spec, strip_generics=True)
     out = json.dumps(records, indent=2, ensure_ascii=False)
 
     if args.output:
