@@ -62,7 +62,7 @@
             "variable": "result",
             "function": "Cls.__next__",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {
