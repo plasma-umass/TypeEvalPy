@@ -1,7 +1,9 @@
 {
     "replacement_mode": "Complex",
     "type_replacements": [
-        "int"
+        "int",
+        "str",
+        "float"
     ],
     "ground_truth": [
         {
@@ -49,7 +51,7 @@
             "col_offset": 9,
             "function": "func.__next__",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {
@@ -59,7 +61,7 @@
             "variable": "cur",
             "function": "func.__next__",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {
@@ -87,7 +89,7 @@
             "col_offset": 1,
             "variable": "output_list[0]",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {
@@ -96,7 +98,7 @@
             "col_offset": 1,
             "variable": "output_list[1]",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {
@@ -105,7 +107,7 @@
             "col_offset": 1,
             "variable": "output_list[2]",
             "type": [
-                "int"
+                "<value1>"
             ]
         },
         {

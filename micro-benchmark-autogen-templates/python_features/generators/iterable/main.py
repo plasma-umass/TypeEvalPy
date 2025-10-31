@@ -11,7 +11,7 @@ class func:
 
     def __next__(self):
         if self.num < self.n:
-            cur, self.num = self.num, self.num + <value1>
+            cur, self.num = <value1> * self.num, self.num + 1
             return cur
         else:
             raise StopIteration()
