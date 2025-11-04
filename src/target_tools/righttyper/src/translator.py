@@ -161,27 +161,6 @@ def process_annotations(spec: dict, root: Path|None = None, *, strip_generics: b
 
         functions = file_info.get("functions", {})
 
-        # RightTyper only indicates object attributes where they are annotated, but
-        # TypeEvalPy sometimes expects them in other code locations where they appear.
-        # To work around that, we copy these across methods... this code has some issues:
-        # (1) it assumes 'self' is named the same everywhere;
-        # (2) it assumes both functions are methods (not functions nested within methods).
-        for func_name, func_info in list(functions.items()):
-            variables = func_info.get("vars", {})
-            if not (attrs := {
-                varname: vartype
-                for varname, vartype in variables.items()
-                if '.' in varname
-            }):
-                continue
-
-            func_name_base = '.'.join(func_name.split('.')[:-1]) + '.'
-            for func_name2 in functions:
-                if func_name2 == func_name or not func_name2.startswith(func_name_base):
-                    continue
-
-                functions[func_name2]['vars'] = attrs | functions[func_name2].get('vars', {})
-
         for func_name, func_info in functions.items():
             assert isinstance(func_info, dict)
 
