@@ -37,15 +37,6 @@
     },
     {
         "file": "main.py",
-        "line_number": 14,
-        "col_offset": 1,
-        "variable": "d['a']",
-        "type": [
-            "callable"
-        ]
-    },
-    {
-        "file": "main.py",
         "line_number": 15,
         "col_offset": 1,
         "variable": "e",
