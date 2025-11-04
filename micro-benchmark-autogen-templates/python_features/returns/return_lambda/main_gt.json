@@ -18,7 +18,7 @@
             "file": "main.py",
             "line_number": 5,
             "col_offset": 19,
-            "function": "func",
+            "function": "lambda",
             "variable": "x",
             "type": [
                 "<value1>",
