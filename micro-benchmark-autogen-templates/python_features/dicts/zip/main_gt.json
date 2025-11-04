@@ -22,7 +22,7 @@
             "col_offset": 1,
             "variable": "keys[0]",
             "type": [
-                "<value1>"
+                "str"
             ]
         },
         {
@@ -31,7 +31,7 @@
             "col_offset": 1,
             "variable": "keys[1]",
             "type": [
-                "<value1>"
+                "int"
             ]
         },
         {
@@ -40,7 +40,7 @@
             "col_offset": 1,
             "variable": "keys[2]",
             "type": [
-                "<value1>"
+                "bool"
             ]
         },
         {
@@ -58,7 +58,7 @@
             "col_offset": 1,
             "variable": "values[0]",
             "type": [
-                "<value2>"
+                "<value1>"
             ]
         },
         {
@@ -76,7 +76,7 @@
             "col_offset": 1,
             "variable": "values[2]",
             "type": [
-                "<value2>"
+                "<value1>"
             ]
         },
         {
@@ -94,14 +94,14 @@
             "col_offset": 1,
             "variable": "my_dict['a']",
             "type": [
-                "<value2>"
+                "<value1>"
             ]
         },
         {
             "file": "main.py",
             "line_number": 6,
             "col_offset": 1,
-            "variable": "my_dict['b']",
+            "variable": "my_dict[0]",
             "type": [
                 "<value2>"
             ]
@@ -110,9 +110,9 @@
             "file": "main.py",
             "line_number": 6,
             "col_offset": 1,
-            "variable": "my_dict['c']",
+            "variable": "my_dict[True]",
             "type": [
-                "<value2>"
+                "<value1>"
             ]
         }
     ]
