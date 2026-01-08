@@ -11,8 +11,8 @@
     {
         "file": "main.py",
         "line_number": 4,
-        "col_offset": 1,
-        "variable": "dict1['a']",
+        "col_offset": 27,
+        "variable": "dict1_a",
         "type": [
             "int"
         ]
@@ -20,8 +20,8 @@
     {
         "file": "main.py",
         "line_number": 4,
-        "col_offset": 1,
-        "variable": "dict1['b']",
+        "col_offset": 47,
+        "variable": "dict1_b",
         "type": [
             "int"
         ]
@@ -38,8 +38,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "dict2['c']",
+        "col_offset": 27,
+        "variable": "dict2_c",
         "type": [
             "int"
         ]
@@ -47,8 +47,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "dict2['d']",
+        "col_offset": 47,
+        "variable": "dict2_d",
         "type": [
             "int"
         ]
@@ -65,8 +65,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "merged_dict['a']",
+        "col_offset": 35,
+        "variable": "merged_dict_a",
         "type": [
             "int"
         ]
@@ -74,8 +74,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "merged_dict['b']",
+        "col_offset": 67,
+        "variable": "merged_dict_b",
         "type": [
             "int"
         ]
@@ -83,8 +83,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "merged_dict['c']",
+        "col_offset": 99,
+        "variable": "merged_dict_c",
         "type": [
             "int"
         ]
@@ -92,8 +92,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "merged_dict['d']",
+        "col_offset": 131,
+        "variable": "merged_dict_d",
         "type": [
             "int"
         ]

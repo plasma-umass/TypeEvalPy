@@ -78,8 +78,8 @@
     {
         "file": "main.py",
         "line_number": 23,
-        "col_offset": 1,
-        "variable": "output_list[0]",
+        "col_offset": 36,
+        "variable": "output_list_0",
         "type": [
             "callable"
         ]
@@ -87,8 +87,8 @@
     {
         "file": "main.py",
         "line_number": 23,
-        "col_offset": 1,
-        "variable": "output_list[1]",
+        "col_offset": 66,
+        "variable": "output_list_1",
         "type": [
             "callable"
         ]

@@ -209,8 +209,8 @@
     {
         "file": "main.py",
         "line_number": 40,
-        "col_offset": 1,
-        "variable": "m['a']",
+        "col_offset": 10,
+        "variable": "m_a",
         "type": [
             "str"
         ]

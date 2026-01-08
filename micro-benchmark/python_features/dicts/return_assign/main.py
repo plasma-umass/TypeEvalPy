@@ -9,6 +9,6 @@ def func1():
     return func2
 
 
-d = {"a": func1()}
+d = {"a": func1()}; d_a=d['a']
 
 e = d["a"]()

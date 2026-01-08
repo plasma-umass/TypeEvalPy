@@ -13,7 +13,7 @@ def func3():
     return "Hello from func3"
 
 
-a = [func1, func2, func3]
+a = [func1, func2, func3]; a_0=a[0]; a_1=a[1]; a_2=a[2]
 
 c = a[0]()
 d = a[1]()
@@ -24,7 +24,7 @@ def func4():
     return True
 
 
-b = ["Hello"]
-b[0] = func4
+b = ["Hello"]; b_0=b[0]
+b[0] = func4; b_0__2=b[0]
 
 f = b[0]()

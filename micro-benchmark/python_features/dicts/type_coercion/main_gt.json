@@ -29,8 +29,8 @@
     {
         "file": "main.py",
         "line_number": 12,
-        "col_offset": 1,
-        "variable": "d[1]",
+        "col_offset": 29,
+        "variable": "d_1",
         "type": [
             "callable"
         ]
@@ -38,8 +38,8 @@
     {
         "file": "main.py",
         "line_number": 12,
-        "col_offset": 1,
-        "variable": "d['1']",
+        "col_offset": 39,
+        "variable": "d_1__2",
         "type": [
             "callable"
         ]

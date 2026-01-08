@@ -10,54 +10,54 @@
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[0]",
+        "line_number": 8,
+        "col_offset": 4,
+        "variable": "data_0",
         "type": [
             "dict"
         ]
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[0]['name']",
+        "line_number": 8,
+        "col_offset": 20,
+        "variable": "data_0_name",
         "type": [
             "str"
         ]
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[0]['city']",
+        "line_number": 8,
+        "col_offset": 49,
+        "variable": "data_0_city",
         "type": [
             "str"
         ]
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[1]",
+        "line_number": 8,
+        "col_offset": 78,
+        "variable": "data_1",
         "type": [
             "dict"
         ]
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[1]['name']",
+        "line_number": 8,
+        "col_offset": 94,
+        "variable": "data_1_name",
         "type": [
             "str"
         ]
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 1,
-        "variable": "data[1]['city']",
+        "line_number": 8,
+        "col_offset": 123,
+        "variable": "data_1_city",
         "type": [
             "str"
         ]
@@ -146,8 +146,8 @@
     {
         "file": "main.py",
         "line_number": 30,
-        "col_offset": 1,
-        "variable": "selector[0]",
+        "col_offset": 27,
+        "variable": "selector_0",
         "type": [
             "bool"
         ]
@@ -155,8 +155,8 @@
     {
         "file": "main.py",
         "line_number": 30,
-        "col_offset": 1,
-        "variable": "selector[1]",
+        "col_offset": 51,
+        "variable": "selector_1",
         "type": [
             "bool"
         ]

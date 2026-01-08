@@ -5,7 +5,7 @@ import itertools
 data = [
     {"name": "Alice", "city": "New York"},
     {"name": "Bob", "city": "San Francisco"},
-]
+]; data_0=data[0]; data_0_name=data[0]['name']; data_0_city=data[0]['city']; data_1=data[1]; data_1_name=data[1]['name']; data_1_city=data[1]['city']
 
 
 sorted_data = sorted(data, key=lambda x: x["city"])
@@ -27,7 +27,7 @@ repeater = itertools.repeat("hello", 3)
 chained = itertools.chain("ABC", "DEF")
 
 # compress() example
-selector = [True, False]
+selector = [True, False]; selector_0=selector[0]; selector_1=selector[1]
 compressed = itertools.compress("AB", selector)
 
 # permutations() example

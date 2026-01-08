@@ -38,8 +38,8 @@
     {
         "file": "main.py",
         "line_number": 16,
-        "col_offset": 1,
-        "variable": "a[0]",
+        "col_offset": 28,
+        "variable": "a_0",
         "type": [
             "callable"
         ]
@@ -47,8 +47,8 @@
     {
         "file": "main.py",
         "line_number": 16,
-        "col_offset": 1,
-        "variable": "a[1]",
+        "col_offset": 38,
+        "variable": "a_1",
         "type": [
             "callable"
         ]
@@ -56,8 +56,8 @@
     {
         "file": "main.py",
         "line_number": 16,
-        "col_offset": 1,
-        "variable": "a[2]",
+        "col_offset": 48,
+        "variable": "a_2",
         "type": [
             "callable"
         ]
@@ -110,8 +110,8 @@
     {
         "file": "main.py",
         "line_number": 27,
-        "col_offset": 1,
-        "variable": "b[0]",
+        "col_offset": 16,
+        "variable": "b_0",
         "type": [
             "str"
         ]
@@ -119,8 +119,8 @@
     {
         "file": "main.py",
         "line_number": 28,
-        "col_offset": 1,
-        "variable": "b[0]",
+        "col_offset": 15,
+        "variable": "b_0__2",
         "type": [
             "callable"
         ]

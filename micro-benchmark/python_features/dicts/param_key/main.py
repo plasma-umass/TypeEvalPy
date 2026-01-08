@@ -13,7 +13,7 @@ def func3():
     return 42
 
 
-d = {"a": func2, "b": func3}
+d = {"a": func2, "b": func3}; d_a=d['a']; d_b=d['b']
 
 e = func1()
 f = func1("b")

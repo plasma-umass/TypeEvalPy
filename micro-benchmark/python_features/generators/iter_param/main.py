@@ -2,7 +2,7 @@
 
 
 def func(c):
-    output_list = [i for i in c]
+    output_list = [i for i in c]; output_list_0=output_list[0]; output_list_1=output_list[1]; output_list_2=output_list[2]
     return output_list
 
 
@@ -23,4 +23,4 @@ class Cls:
         return result
 
 
-a = func(Cls(2))
+a = func(Cls(2)); a_0=a[0]; a_1=a[1]; a_2=a[2]

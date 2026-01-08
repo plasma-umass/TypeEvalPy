@@ -37,4 +37,4 @@ h = d()
 f, b = c, e = func5, func6
 
 l = e()
-m = f()
+m = f(); m_a=m['a']

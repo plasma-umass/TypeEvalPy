@@ -6,7 +6,7 @@ def func2():
 
 
 def func1():
-    d = {"a": func2}
+    d = {"a": func2}; d_a=d['a']
     return d
 
 

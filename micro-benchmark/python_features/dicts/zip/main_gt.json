@@ -11,8 +11,8 @@
     {
         "file": "main.py",
         "line_number": 4,
-        "col_offset": 1,
-        "variable": "keys[0]",
+        "col_offset": 25,
+        "variable": "keys_0",
         "type": [
             "str"
         ]
@@ -20,8 +20,8 @@
     {
         "file": "main.py",
         "line_number": 4,
-        "col_offset": 1,
-        "variable": "keys[1]",
+        "col_offset": 41,
+        "variable": "keys_1",
         "type": [
             "str"
         ]
@@ -29,8 +29,8 @@
     {
         "file": "main.py",
         "line_number": 4,
-        "col_offset": 1,
-        "variable": "keys[2]",
+        "col_offset": 57,
+        "variable": "keys_2",
         "type": [
             "str"
         ]
@@ -47,8 +47,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "values[0]",
+        "col_offset": 21,
+        "variable": "values_0",
         "type": [
             "int"
         ]
@@ -56,8 +56,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "values[1]",
+        "col_offset": 41,
+        "variable": "values_1",
         "type": [
             "int"
         ]
@@ -65,8 +65,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "values[2]",
+        "col_offset": 61,
+        "variable": "values_2",
         "type": [
             "int"
         ]
@@ -83,8 +83,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "my_dict['a']",
+        "col_offset": 36,
+        "variable": "my_dict_a",
         "type": [
             "int"
         ]
@@ -92,8 +92,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "my_dict['b']",
+        "col_offset": 60,
+        "variable": "my_dict_b",
         "type": [
             "int"
         ]
@@ -101,8 +101,8 @@
     {
         "file": "main.py",
         "line_number": 6,
-        "col_offset": 1,
-        "variable": "my_dict['c']",
+        "col_offset": 84,
+        "variable": "my_dict_c",
         "type": [
             "int"
         ]

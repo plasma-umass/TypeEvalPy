@@ -17,4 +17,4 @@ class func:
             raise StopIteration()
 
 
-output_list = [i for i in func(3)]
+output_list = [i for i in func(3)]; output_list_0=output_list[0]; output_list_1=output_list[1]; output_list_2=output_list[2]

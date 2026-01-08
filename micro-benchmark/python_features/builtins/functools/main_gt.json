@@ -40,8 +40,8 @@
     {
         "file": "main.py",
         "line_number": 9,
-        "col_offset": 1,
-        "variable": "numbers[0]",
+        "col_offset": 19,
+        "variable": "numbers_0",
         "type": [
             "int"
         ]
@@ -49,8 +49,8 @@
     {
         "file": "main.py",
         "line_number": 9,
-        "col_offset": 1,
-        "variable": "numbers[1]",
+        "col_offset": 41,
+        "variable": "numbers_1",
         "type": [
             "int"
         ]

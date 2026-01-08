@@ -41,8 +41,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 5,
-        "variable": "output_list[0]",
+        "col_offset": 35,
+        "variable": "output_list_0",
         "function": "func",
         "type": [
             "int"
@@ -51,8 +51,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 5,
-        "variable": "output_list[1]",
+        "col_offset": 65,
+        "variable": "output_list_1",
         "function": "func",
         "type": [
             "int"
@@ -61,8 +61,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 5,
-        "variable": "output_list[2]",
+        "col_offset": 95,
+        "variable": "output_list_2",
         "function": "func",
         "type": [
             "int"
@@ -148,8 +148,8 @@
     {
         "file": "main.py",
         "line_number": 26,
-        "col_offset": 1,
-        "variable": "a[0]",
+        "col_offset": 19,
+        "variable": "a_0",
         "type": [
             "int"
         ]
@@ -157,8 +157,8 @@
     {
         "file": "main.py",
         "line_number": 26,
-        "col_offset": 1,
-        "variable": "a[1]",
+        "col_offset": 29,
+        "variable": "a_1",
         "type": [
             "int"
         ]
@@ -166,8 +166,8 @@
     {
         "file": "main.py",
         "line_number": 26,
-        "col_offset": 1,
-        "variable": "a[2]",
+        "col_offset": 39,
+        "variable": "a_2",
         "type": [
             "int"
         ]

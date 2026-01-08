@@ -7,5 +7,5 @@ def func():
 
 d = {}
 
-d["b"] = func
+d["b"] = func; d_b=d['b']
 e = d["b"]()

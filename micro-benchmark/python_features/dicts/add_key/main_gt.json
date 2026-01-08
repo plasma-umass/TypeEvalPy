@@ -20,8 +20,8 @@
     {
         "file": "main.py",
         "line_number": 10,
-        "col_offset": 1,
-        "variable": "d['b']",
+        "col_offset": 16,
+        "variable": "d_b",
         "type": [
             "callable"
         ]

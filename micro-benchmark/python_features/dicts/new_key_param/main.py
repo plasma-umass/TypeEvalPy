@@ -6,7 +6,7 @@ def func2():
 
 
 def func(key="a"):
-    d[key] = func2
+    d[key] = func2; d_a=d['a']
 
 
 d = {}

@@ -20,8 +20,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "b[0]",
+        "col_offset": 23,
+        "variable": "b_0",
         "type": [
             "str"
         ]
@@ -29,8 +29,8 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 1,
-        "variable": "b[1]",
+        "col_offset": 33,
+        "variable": "b_1",
         "type": [
             "str"
         ]

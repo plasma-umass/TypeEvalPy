@@ -8,6 +8,6 @@ def func():
     return "Hello from func"
 
 
-d = {"a": func}
+d = {"a": func}; d_a=d['a']
 
 e = d[key]()

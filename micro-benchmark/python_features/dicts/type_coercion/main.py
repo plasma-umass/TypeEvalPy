@@ -9,7 +9,7 @@ def func2():
     return 42
 
 
-d = {1: func1, "1": func2}
+d = {1: func1, "1": func2}; d_1=d[1]; d_1__2=d['1']
 
 e = d[1]()
 f = d["1"]()

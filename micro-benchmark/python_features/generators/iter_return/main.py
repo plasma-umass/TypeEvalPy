@@ -20,5 +20,5 @@ class Cls:
         return func
 
 
-output_list = [i for i in Cls(1)]
+output_list = [i for i in Cls(1)]; output_list_0=output_list[0]; output_list_1=output_list[1]
 a = output_list[1]()

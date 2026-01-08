@@ -88,8 +88,8 @@
     {
         "file": "main.py",
         "line_number": 23,
-        "col_offset": 1,
-        "variable": "output_list[0]",
+        "col_offset": 31,
+        "variable": "output_list_0",
         "type": [
             "int"
         ]
@@ -97,8 +97,8 @@
     {
         "file": "main.py",
         "line_number": 23,
-        "col_offset": 1,
-        "variable": "output_list[1]",
+        "col_offset": 61,
+        "variable": "output_list_1",
         "type": [
             "int"
         ]
@@ -106,8 +106,8 @@
     {
         "file": "main.py",
         "line_number": 23,
-        "col_offset": 1,
-        "variable": "output_list[2]",
+        "col_offset": 91,
+        "variable": "output_list_2",
         "type": [
             "int"
         ]

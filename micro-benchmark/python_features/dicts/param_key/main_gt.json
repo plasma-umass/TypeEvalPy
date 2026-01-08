@@ -49,8 +49,8 @@
     {
         "file": "main.py",
         "line_number": 16,
-        "col_offset": 1,
-        "variable": "d['a']",
+        "col_offset": 31,
+        "variable": "d_a",
         "type": [
             "callable"
         ]
@@ -58,8 +58,8 @@
     {
         "file": "main.py",
         "line_number": 16,
-        "col_offset": 1,
-        "variable": "d['b']",
+        "col_offset": 43,
+        "variable": "d_b",
         "type": [
             "callable"
         ]
