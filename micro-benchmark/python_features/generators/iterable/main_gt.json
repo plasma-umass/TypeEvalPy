@@ -102,14 +102,5 @@
         "type": [
             "int"
         ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 20,
-        "col_offset": 22,
-        "variable": "i",
-        "type": [
-            "int"
-        ]
     }
 ]

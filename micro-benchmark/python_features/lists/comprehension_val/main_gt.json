@@ -26,14 +26,5 @@
         "type": [
             "list"
         ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 8,
-        "col_offset": 19,
-        "variable": "a",
-        "type": [
-            "int"
-        ]
     }
 ]

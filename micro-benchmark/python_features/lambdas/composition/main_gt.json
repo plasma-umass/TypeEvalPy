@@ -7,25 +7,5 @@
         "type": [
             "int"
         ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 4,
-        "col_offset": 18,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 4,
-        "col_offset": 36,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
     }
 ]

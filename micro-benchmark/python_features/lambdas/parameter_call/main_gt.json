@@ -29,16 +29,6 @@
     },
     {
         "file": "main.py",
-        "line_number": 8,
-        "col_offset": 12,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
         "line_number": 10,
         "col_offset": 1,
         "variable": "b",

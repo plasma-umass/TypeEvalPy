@@ -28,16 +28,6 @@
     },
     {
         "file": "main.py",
-        "line_number": 12,
-        "col_offset": 12,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "callable"
-        ]
-    },
-    {
-        "file": "main.py",
         "line_number": 14,
         "col_offset": 1,
         "variable": "a",

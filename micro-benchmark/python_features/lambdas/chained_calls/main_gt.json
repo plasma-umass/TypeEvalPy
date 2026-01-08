@@ -94,35 +94,5 @@
         "type": [
             "int"
         ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 18,
-        "col_offset": 18,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 18,
-        "col_offset": 35,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 18,
-        "col_offset": 52,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int"
-        ]
     }
 ]

@@ -91,16 +91,6 @@
     },
     {
         "file": "main.py",
-        "line_number": 41,
-        "col_offset": 22,
-        "function": "func5",
-        "variable": "x",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
         "line_number": 44,
         "col_offset": 1,
         "variable": "e",

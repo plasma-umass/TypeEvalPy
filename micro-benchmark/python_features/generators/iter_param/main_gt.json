@@ -21,16 +21,6 @@
     {
         "file": "main.py",
         "line_number": 5,
-        "col_offset": 26,
-        "variable": "i",
-        "function": "func",
-        "type": [
-            "int"
-        ]
-    },
-    {
-        "file": "main.py",
-        "line_number": 5,
         "col_offset": 5,
         "variable": "output_list",
         "function": "func",

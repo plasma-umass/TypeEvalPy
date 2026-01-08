@@ -10,17 +10,6 @@
     },
     {
         "file": "main.py",
-        "line_number": 5,
-        "col_offset": 19,
-        "function": "lambda",
-        "parameter": "x",
-        "type": [
-            "int",
-            "float"
-        ]
-    },
-    {
-        "file": "main.py",
         "line_number": 8,
         "variable": "f",
         "col_offset": 1,
