@@ -21,8 +21,10 @@ def _code(expr: cst.BaseExpression) -> str:
 _NAME_MAP = {
     'typing.Callable': 'callable',
     'collections.abc.Callable': 'callable',
-    'typing.Iterator': 'generator',
-    'collections.abc.Iterator': 'generator',
+    'typing.Iterator': 'iterator',
+    'collections.abc.Iterator': 'iterator',
+    'typing.Generator': 'generator',
+    'collections.abc.Generator': 'generator',
     'typing.Type': 'type',
     'types.CodeType': 'code',
     'None': 'Nonetype',

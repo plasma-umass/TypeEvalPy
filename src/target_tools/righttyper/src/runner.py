@@ -38,7 +38,7 @@ def process_file(file_path, benchmark_path):
     subprocess.run(
         [sys.executable, "-m", "righttyper",
          "--no-output-files", "--json-output", "--variables",
-         "--no-sampling", "--use-top-pct=100", "--no-simplify-type-sets",
+         "--no-simplify-types",
          "--python-version=3.10",
          "--root", benchmark_path, file_path],
         cwd=file_path.parent,
