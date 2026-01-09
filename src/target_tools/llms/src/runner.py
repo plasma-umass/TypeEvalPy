@@ -250,9 +250,9 @@ def model_evaluation_openai(
         file_info = id_mapping[id]
 
         output_raw = r_output
-        if prompt_id in ["prompt_template_questions_based_2",]:
+        if prompt_template in ["prompt_template_questions_based_2",]:
             create_result_json_file(file_info, output_raw, prompt_template)
-        elif prompt_id in ["prompt_template_masked_code_based_1",]:
+        elif prompt_template in ["prompt_template_masked_code_based_1",]:
             create_result_json_from_code_file(file_info, output_raw, prompt_template)
 
 
