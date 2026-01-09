@@ -344,6 +344,7 @@ class Type4pyRunner(TypeEvalPyRunner):
             stdin_open=True,
             tty=True,
             ports={"5010": 5001},
+            volumes=self.volumes,
         )
         time.sleep(5)  # wait fot server to start
         return container

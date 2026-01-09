@@ -52,7 +52,7 @@ def process_file(file_path):
     else:
         output = data
 
-    return output
+    return output, code
 
 
 def main_runner(args):
@@ -64,9 +64,9 @@ def main_runner(args):
         try:
             logger.info(f"Processing file {i+1}/{len(python_files)}: {file}")
             # logger.debug(file)
-            inferred = process_file(file)
+            inferred, source_code = process_file(file)
 
-            translated = translator.translate_content(inferred)
+            translated = translator.translate_content(inferred, source_code)
             logger.info(f"Translated: {translated}")
 
             json_file_path = str(file).replace(".py", "_result.json")
@@ -102,5 +102,5 @@ if __name__ == "__main__":
         API_URL = "https://type4py.com/api/predict?tc=0"
         print("Python is not running inside a Docker container")
         file_path = "/mnt/Projects/PhD/Research/Student-Thesis/4_type_inference_benchmark(Sam)/git_sources/master-thesis-of-samkutty/micro-benchmark/python_features/returns/multiple_types/main.py"
-        inferred = process_file(file_path)
-        translated = translator.translate_content(inferred)
+        inferred, source_code = process_file(file_path)
+        translated = translator.translate_content(inferred, source_code)

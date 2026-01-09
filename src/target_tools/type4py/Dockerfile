@@ -9,5 +9,6 @@ RUN pip install --upgrade pip
 #RUN pip install .
 RUN pip install -r /app/requirements.txt
 
-# Run app.py when the container launches
-ENTRYPOINT ["python", "/tmp/src/runner.py"]
+# Start the Type4Py server and keep container running
+WORKDIR /type4py/type4py/server
+CMD ["bash", "run_server.sh"]
