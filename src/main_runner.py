@@ -22,6 +22,7 @@ from runner_class import (
     ScalpelRunner,
     Type4pyRunner,
     LLMRunner,
+    OpenAIRunner,
     RightTyperRunner,
 )
 from utils import FileHandler
@@ -159,6 +160,15 @@ def main():
         ),
         "llms": (
             LLMRunner,
+            {
+                "debug": args.debug,
+                "nocache": args.nocache,
+                "custom_benchmark_dir": args.custom_benchmark_dir,
+                "config": config,
+            },
+        ),
+        "openai": (
+            OpenAIRunner,
             {
                 "debug": args.debug,
                 "nocache": args.nocache,

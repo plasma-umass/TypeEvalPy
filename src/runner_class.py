@@ -473,6 +473,59 @@ class LLMRunner(TypeEvalPyRunner):
         return container
 
 
+class OpenAIRunner(TypeEvalPyRunner):
+    def __init__(
+        self,
+        host_results_path,
+        config,
+        debug=False,
+        nocache=False,
+        custom_benchmark_dir=None,
+    ):
+        super().__init__(
+            "openai",
+            "./target_tools/openai",
+            host_results_path,
+            nocache=nocache,
+            custom_benchmark_dir=custom_benchmark_dir,
+        )
+        self.config = config
+
+    def run_test_in_session(self):
+        command_to_run = [
+            "python",
+            self.test_runner_script_path,
+            "--bechmark_path",
+            self.benchmark_path,
+            "--hf_token",
+            self.config["llm"]["hf_token"],
+            "--openai_key",
+            self.config["llm"]["openai_key"],
+            "--prompt_id",
+            self.config["llm"]["prompt_id"],
+        ]
+
+        for i in ["openai_models"]:
+            if self.config["llm"][i]:
+                command_to_run.append(f"--{i}")
+                command_to_run.extend(self.config["llm"][i])
+
+        _, response = self.container.exec_run(" ".join(command_to_run), stream=True)
+        for line in response:
+            logger.info(line)
+
+    def copy_results_from_container(self):
+        for i in ["openai_models"]:
+            if self.config["llm"][i]:
+                for model in self.config["llm"][i]:
+                    model_results_path = f"/tmp/{model}/micro-benchmark"
+                    self.file_handler.copy_files_from_container(
+                        self.container,
+                        model_results_path,
+                        f"{self.host_results_path}/{model}",
+                    )
+
+
 class RightTyperRunner(TypeEvalPyRunner):
     def __init__(
         self,

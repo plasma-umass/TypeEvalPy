@@ -1,0 +1,7 @@
+requests
+langchain
+langchain_openai
+openai
+pytest
+packaging
+tiktoken
