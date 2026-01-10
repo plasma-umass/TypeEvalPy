@@ -25,6 +25,7 @@ from runner_class import (
     OpenAIRunner,
     RightTyperRunner,
     PytypeRunner,
+    QuACRunner,
 )
 from utils import FileHandler
 
@@ -69,10 +70,11 @@ def get_args():
             "type4py",
             "hityperdl",
             "righttyper",
+            "quac",
         ],
         help=(
             "List of runners to execute. Choices are:"
-            "headergen, pyright, scalpel, jedi, hityper, type4py, hityperdl, righttyper"
+            "headergen, pyright, scalpel, jedi, hityper, type4py, hityperdl, righttyper, pytype, quac"
         ),
     )
     parser.add_argument(
@@ -188,6 +190,15 @@ def main():
         ),
         "pytype": (
             PytypeRunner,
+            {
+                "debug": args.debug,
+                "nocache": args.nocache,
+                "custom_benchmark_dir": args.custom_benchmark_dir,
+                "config": config,
+            },
+        ),
+        "quac": (
+            QuACRunner,
             {
                 "debug": args.debug,
                 "nocache": args.nocache,
