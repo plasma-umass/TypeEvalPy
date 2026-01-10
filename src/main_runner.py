@@ -24,6 +24,7 @@ from runner_class import (
     LLMRunner,
     OpenAIRunner,
     RightTyperRunner,
+    PytypeRunner,
 )
 from utils import FileHandler
 
@@ -185,8 +186,16 @@ def main():
                 "config": config,
             },
         ),
+        "pytype": (
+            PytypeRunner,
+            {
+                "debug": args.debug,
+                "nocache": args.nocache,
+                "custom_benchmark_dir": args.custom_benchmark_dir,
+                "config": config,
+            },
+        ),
         # PySonar2Runner,
-        # PytypeRunner,
         # PyreRunner,
     }
 

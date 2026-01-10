@@ -178,6 +178,7 @@ class PytypeRunner(TypeEvalPyRunner):
     def __init__(
         self,
         host_results_path,
+        config,
         debug=False,
         nocache=False,
         custom_benchmark_dir=None,
@@ -189,6 +190,7 @@ class PytypeRunner(TypeEvalPyRunner):
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )
+        self.config = config
 
 
 class JediRunner(TypeEvalPyRunner):
