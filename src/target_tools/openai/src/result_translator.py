@@ -6,15 +6,15 @@ from typing import List, Dict, Any
 def parse_annotation(annotation_node: ast.AST) -> str:
     """
     Convert AST annotation node into the exact type string as present in the code.
-    Normalizes "None" to "Nonetype" to match ground truth format.
+    Normalizes "None" and "NoneType" to "Nonetype" to match ground truth format.
     """
     if annotation_node is None:
         return "Nonetype"
 
     type_str = ast.unparse(annotation_node)
 
-    # Normalize None to Nonetype to match ground truth
-    if type_str == "None":
+    # Normalize None and NoneType to Nonetype to match ground truth
+    if type_str in ("None", "NoneType"):
         return "Nonetype"
 
     return type_str
