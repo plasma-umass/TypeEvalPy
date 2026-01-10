@@ -6,10 +6,18 @@ from typing import List, Dict, Any
 def parse_annotation(annotation_node: ast.AST) -> str:
     """
     Convert AST annotation node into the exact type string as present in the code.
+    Normalizes "None" to "Nonetype" to match ground truth format.
     """
     if annotation_node is None:
-        return "None"
-    return ast.unparse(annotation_node)  # Use ast.unparse to get the exact annotation as a string.
+        return "Nonetype"
+
+    type_str = ast.unparse(annotation_node)
+
+    # Normalize None to Nonetype to match ground truth
+    if type_str == "None":
+        return "Nonetype"
+
+    return type_str
 
 def get_type_annotations_from_content(source: str, filename: str) -> List[Dict[str, Any]]:
     """Parse type annotations from source code content with syntax error handling."""
