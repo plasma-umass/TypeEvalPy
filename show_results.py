@@ -228,11 +228,17 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Show type inference results")
+    parser.add_argument('--latex', action='store_true', help='Output LaTeX table format')
+    args = parser.parse_args()
+
     results_base = Path("/home/juan/project/TypeEvalPy/results")
 
-    print("\n" + "="*80)
-    print("Type Comparison with Semantic Equivalence")
-    print("="*80)
+    if not args.latex:
+        print("\n" + "="*80)
+        print("Type Comparison with Semantic Equivalence")
+        print("="*80)
 
     # Automatically discover latest run for each tool
     latest_runs = {}  # tool_name -> run_dir_name
@@ -253,60 +259,70 @@ def main():
                     if tool_name not in latest_runs:
                         latest_runs[tool_name] = run_dir.name
 
-    # Sort tools alphabetically, but keep RightTyper at the end
-    tool_order = sorted([t for t in latest_runs.keys() if t.lower() != 'righttyper'])
-    if 'righttyper' in latest_runs:
-        tool_order.append('righttyper')
+    # Sort tools alphabetically
+    tool_order = sorted(latest_runs.keys())
 
-    print(f"\nDiscovered latest runs:")
-    for tool in tool_order:
-        print(f"  {tool}: {latest_runs[tool]}")
+    # Tool display names
+    tool_labels = {
+        'gpt-4o': 'GPT-4o',
+        'righttyper': 'RightTyper',
+        'quac': 'QuAC',
+        'type4py': 'Type4Py',
+    }
 
-    for tool in tool_order:
-        run = latest_runs[tool]
-        run_dir = results_base / run
-        if not run_dir.exists():
-            continue
+    if not args.latex:
+        print(f"\nDiscovered latest runs:")
+        for tool in tool_order:
+            print(f"  {tool}: {latest_runs[tool]}")
 
-        stats = analyze_with_normalizations(run_dir, tool)
-        if not stats:
-            continue
+    # Detailed per-tool output
+    if not args.latex:
+        for tool in tool_order:
+            run = latest_runs[tool]
+            run_dir = results_base / run
+            if not run_dir.exists():
+                continue
 
-        print(f"\n{tool.upper()}")
-        print("-" * 80)
-        print(f"Total facts: {stats['total']}")
-        print(f"Missing predictions: {stats['missing']}")
-        print(f"Incomplete matches: {stats['incomplete']}")
-        print()
+            stats = analyze_with_normalizations(run_dir, tool)
+            if not stats:
+                continue
 
-        # Always use total facts as denominator for fair comparison
-        total = stats['total']
+            print(f"\n{tool_labels.get(tool, tool.upper())}")
+            print("-" * 80)
+            print(f"Total facts: {stats['total']}")
+            print(f"Missing predictions: {stats['missing']}")
+            print(f"Incomplete matches: {stats['incomplete']}")
+            print()
 
-        # Build detail table
-        detail_data = [
-            ["Exact match", f"{stats['exact']}/{total}", f"{stats['exact']/total*100:.2f}%", ""],
-            ["+ Semantic equiv", f"{stats['equivalence']}/{total}", f"{stats['equivalence']/total*100:.2f}%", f"+{stats['equivalence'] - stats['exact']}"],
-        ]
-        print(tabulate(detail_data, headers=["Comparison", "Correct", "Accuracy", "Gain"], tablefmt="simple"))
+            # Always use total facts as denominator for fair comparison
+            total = stats['total']
 
-        # Show examples
-        if stats['examples']['equivalence_only']:
-            print("\n  Examples fixed by semantic equivalence (same functionality):")
-            for ex in stats['examples']['equivalence_only']:
-                print(f"    {ex['file']}:{ex['line']}  {ex['gt']} -> {ex['pred']}")
+            # Build detail table
+            detail_data = [
+                ["Exact match", f"{stats['exact']}/{total}", f"{stats['exact']/total*100:.2f}%", ""],
+                ["+ Semantic equiv", f"{stats['equivalence']}/{total}", f"{stats['equivalence']/total*100:.2f}%", f"+{stats['equivalence'] - stats['exact']}"],
+            ]
+            print(tabulate(detail_data, headers=["Comparison", "Correct", "Accuracy", "Gain"], tablefmt="simple"))
 
-        if stats['examples']['incomplete']:
-            print("\n  Examples of incomplete matches (correct but missing types):")
-            for ex in stats['examples']['incomplete']:
-                print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
+            # Show examples
+            if stats['examples']['equivalence_only']:
+                print("\n  Examples fixed by semantic equivalence (same functionality):")
+                for ex in stats['examples']['equivalence_only']:
+                    print(f"    {ex['file']}:{ex['line']}  {ex['gt']} -> {ex['pred']}")
+
+            if stats['examples']['incomplete']:
+                print("\n  Examples of incomplete matches (correct but missing types):")
+                for ex in stats['examples']['incomplete']:
+                    print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
 
     # Summary
-    print("\n" + "="*80)
-    print("Summary Table")
-    print("="*80)
+    if not args.latex:
+        print("\n" + "="*80)
+        print("Summary Table")
+        print("="*80)
 
-    # Build table data
-    table_data = []
+    # Build table data with raw values
+    table_data_raw = []  # [(tool_label, exact_pct, equiv_pct, incomplete_pct, exact_count, total, equiv_count, incomplete_count)]
     for tool in tool_order:
         run = latest_runs[tool]
         run_dir = results_base / run
@@ -321,15 +337,61 @@ def main():
         total = stats['total']
 
         row = [
-            tool,
-            f"{stats['exact']}/{total} ({stats['exact']/total*100:.1f}%)",
-            f"{stats['equivalence']}/{total} ({stats['equivalence']/total*100:.1f}%)",
-            f"{stats['incomplete']}/{total} ({stats['incomplete']/total*100:.1f}%)"
+            tool_labels.get(tool, tool),
+            stats['exact']/total*100,      # exact percentage
+            stats['equivalence']/total*100, # equiv percentage
+            stats['incomplete']/total*100,  # incomplete percentage
+            stats['exact'],
+            total,
+            stats['equivalence'],
+            stats['incomplete']
         ]
-        table_data.append(row)
+        table_data_raw.append(row)
 
-    headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Incomplete Match"]
-    print(tabulate(table_data, headers=headers, tablefmt="simple"))
+    # Find max values in each percentage column
+    if table_data_raw:
+        max_exact = max(row[1] for row in table_data_raw)
+        max_equiv = max(row[2] for row in table_data_raw)
+        max_incomplete = max(row[3] for row in table_data_raw)
+    else:
+        max_exact = max_equiv = max_incomplete = 0
+
+    if args.latex:
+        # LaTeX output
+        print(r"\begin{tabular}{lrrr}")
+        print(r"\toprule")
+        print(r"Tool & Exact Match & With Sem. Equiv. & Incomplete Match \\")
+        print(r"\midrule")
+
+        for row in table_data_raw:
+            tool_label, exact_pct, equiv_pct, incomplete_pct, exact_count, total, equiv_count, incomplete_count = row
+
+            # Use \PCT{} for max values, \pct{} for others
+            exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
+            equiv_macro = r"\PCT" if equiv_pct == max_equiv else r"\pct"
+            incomplete_macro = r"\PCT" if incomplete_pct == max_incomplete else r"\pct"
+
+            print(f"{tool_label} & {exact_count}/{total} ({exact_macro}{{{exact_pct:.1f}}}) & "
+                  f"{equiv_count}/{total} ({equiv_macro}{{{equiv_pct:.1f}}}) & "
+                  f"{incomplete_count}/{total} ({incomplete_macro}{{{incomplete_pct:.1f}}}) \\\\")
+
+        print(r"\bottomrule")
+        print(r"\end{tabular}")
+    else:
+        # Normal tabulate output
+        table_data = []
+        for row in table_data_raw:
+            tool_label, exact_pct, equiv_pct, incomplete_pct, exact_count, total, equiv_count, incomplete_count = row
+            formatted_row = [
+                tool_label,
+                f"{exact_count}/{total} ({exact_pct:.1f}%)",
+                f"{equiv_count}/{total} ({equiv_pct:.1f}%)",
+                f"{incomplete_count}/{total} ({incomplete_pct:.1f}%)"
+            ]
+            table_data.append(formatted_row)
+
+        headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Incomplete Match"]
+        print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
 if __name__ == "__main__":
