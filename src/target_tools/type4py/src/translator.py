@@ -4,13 +4,17 @@ import os
 from pathlib import Path
 
 from codeindex import ModuleIndex
+from type_normalizer import normalize_types
 
 
-def parse_type_prediction(pred: list[list], id_type=None) -> str:
+def parse_type_prediction(pred: list[list], id_type=None) -> tuple[list[str], str]:
+    """Parse type prediction and return (normalized_types, full_type)"""
     if pred:
-        return [pred[0][0]]
+        full_type = pred[0][0]
+        normalized = normalize_types(full_type)
+        return normalized, full_type
     else:
-        return ["Unknown"]
+        return ["Unknown"], "Unknown"
 
 
 def translate_content(data, source_code):
@@ -44,13 +48,15 @@ def translate_content(data, source_code):
             # Fallback if not found
             func_col_offset = fn_lc[0][1] + 1
 
+        normalized_type, full_type = parse_type_prediction(func.get("ret_type_p"))
         output.append(
             {
                 "file": "main.py",
                 "line_number": line_number,
                 "col_offset": func_col_offset,
                 "function": name,
-                "type": parse_type_prediction(func.get("ret_type_p")),
+                "type": normalized_type,
+                "full_type": full_type,
                 "all_type_preds": func.get("ret_type_p"),
             }
         )
@@ -61,6 +67,7 @@ def translate_content(data, source_code):
             # Skip parameters that don't exist in the source code (like Type4Py's added 'args' and 'kwargs')
             if func_info and param in func_info.params:
                 param_col_offset = func_info.params[param].col_offset
+                normalized_type, full_type = parse_type_prediction(param_type)
                 output.append(
                     {
                         "file": "main.py",
@@ -68,7 +75,8 @@ def translate_content(data, source_code):
                         "col_offset": param_col_offset,
                         "parameter": param,
                         "function": name,
-                        "type": parse_type_prediction(param_type),
+                        "type": normalized_type,
+                        "full_type": full_type,
                         "all_type_preds": param_type,
                     }
                 )
@@ -92,13 +100,15 @@ def translate_content(data, source_code):
             else:
                 var_col_offset = var_ln[0][1] + 1
 
+            normalized_type, full_type = parse_type_prediction(var_type)
             output.append(
                 {
                     "file": "main.py",
                     "line_number": line_number,
                     "col_offset": var_col_offset,
                     "variable": var,
-                    "type": parse_type_prediction(var_type),
+                    "type": normalized_type,
+                    "full_type": full_type,
                     "all_type_preds": var_type,
                 }
             )
