@@ -10,118 +10,7 @@ from typing import Dict, List, Optional, Tuple
 import libcst as cst
 
 from codeindex import ModuleIndex
-
-# ---------------- Type string normalization ----------------
-
-_RENDER_MODULE = cst.Module(body=())
-
-def _code(expr: cst.BaseExpression) -> str:
-    return _RENDER_MODULE.code_for_node(expr).strip()
-
-_NAME_MAP = {
-    'typing.Callable': 'callable',
-    'collections.abc.Callable': 'callable',
-    'typing.Iterator': 'iterator',
-    'collections.abc.Iterator': 'iterator',
-    'typing.Generator': 'generator',
-    'collections.abc.Generator': 'generator',
-    'typing.Type': 'type',
-    'types.CodeType': 'code',
-    'None': 'Nonetype',
-}
-
-def normalize_types(type_str: str, *, strip_generics: bool = False) -> list[str]:
-    """
-    Parse type_str and return a list of top-level alternates.
-    If strip_generics=True, collapse generics so that e.g. list[int] -> 'list',
-    typing.Callable[[int], None] -> 'typing.Callable'.
-    """
-    s = type_str.strip()
-    if not s:
-        return [""]
-
-    try:
-        expr = cst.parse_expression(s)
-    except Exception:
-        return [s]
-
-    def _cst_qualified_name(node: cst.BaseExpression) -> str | None:
-        if isinstance(node, cst.Name):
-            return node.value
-        if isinstance(node, cst.Attribute):
-            parts = []
-            cur: cst.BaseExpression | None = node
-            while isinstance(cur, cst.Attribute):
-                parts.append(cur.attr.value)
-                cur = cur.value
-            if isinstance(cur, cst.Name):
-                parts.append(cur.value)
-                return ".".join(reversed(parts))
-        return None
-
-    def _is_typing_name(name: str | None, base: str) -> bool:
-        return bool(name) and (name == base or name == f"typing.{base}")
-
-    # Split only at TOP-LEVEL unions (| and typing.Union[...])
-    def split_top_level(e: cst.BaseExpression) -> list[cst.BaseExpression]:
-        if isinstance(e, cst.BinaryOperation) and isinstance(e.operator, cst.BitOr):
-            return split_top_level(e.left) + split_top_level(e.right)
-        if isinstance(e, cst.Subscript):
-            base_name = _cst_qualified_name(e.value)
-            if _is_typing_name(base_name, "Union"):
-                alts: list[cst.BaseExpression] = []
-                for sl in e.slice:
-                    if isinstance(sl, cst.SubscriptElement) and isinstance(sl.slice, cst.Index):
-                        alts.extend(split_top_level(sl.slice.value))
-                return alts
-        return [e]
-
-    # Desugar Optional[T] -> [T, None], Annotated[T, ...] -> [T]
-    def desugar(e: cst.BaseExpression) -> list[cst.BaseExpression]:
-        if isinstance(e, cst.Subscript):
-            base_name = _cst_qualified_name(e.value)
-            if _is_typing_name(base_name, "Annotated"):
-                if e.slice:
-                    first = e.slice[0]
-                    if isinstance(first, cst.SubscriptElement) and isinstance(first.slice, cst.Index):
-                        return desugar(first.slice.value)
-                return [e]
-            if _is_typing_name(base_name, "Optional"):
-                if e.slice:
-                    first = e.slice[0]
-                    if isinstance(first, cst.SubscriptElement) and isinstance(first.slice, cst.Index):
-                        return desugar(first.slice.value) + [cst.Name("None")]
-                return [e]
-        return [e]
-
-    top_level_parts = split_top_level(expr)
-    desugared: list[cst.BaseExpression] = []
-    for p in top_level_parts:
-        desugared.extend(desugar(p))
-
-    # Optionally collapse generics/subscripts to just their base name
-    out: list[str] = []
-    for part in desugared:
-        if strip_generics:
-            if isinstance(part, cst.Subscript):
-                name = _cst_qualified_name(part.value)
-
-                if name is None:
-                    name = _code(part)
-            else:
-                name = _code(part)
-
-            if name in _NAME_MAP:
-                name = _NAME_MAP[name]
-
-            if name.startswith("main."):
-                name = name[5:]
-
-            out.append(name)
-        else:
-            out.append(_code(part))
-    return out
-
+from type_normalizer import normalize_types
 
 # ---------------- Core processing ----------------
 
@@ -139,7 +28,7 @@ def simplify_path(file_str: str, root: Path|None = None) -> str:
         return str(p)
 
 
-def process_annotations(spec: dict, root: Path|None = None, *, strip_generics: bool = False) -> List[dict]:
+def process_annotations(spec: dict, root: Path|None = None) -> List[dict]:
     out: List[dict] = []
 
     for file_str, file_info in spec.get("files", {}).items():
@@ -160,7 +49,8 @@ def process_annotations(spec: dict, root: Path|None = None, *, strip_generics: b
             out.append({
                 "file": simplified_file,
                 **info,
-                "type": normalize_types(type_str, strip_generics=strip_generics)
+                "type": normalize_types(type_str),
+                "full_type": type_str
             })
 
         functions = file_info.get("functions", {})
@@ -248,7 +138,7 @@ def main():
     spec_path = Path(args.input_json)
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
 
-    records = process_annotations(spec, strip_generics=True)
+    records = process_annotations(spec)
     out = json.dumps(records, indent=2, ensure_ascii=False)
 
     if args.output:
