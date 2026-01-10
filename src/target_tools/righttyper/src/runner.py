@@ -64,7 +64,7 @@ def main_runner(args):
             result_file.rename(file.parent / (file.stem + "_rt.json"))
 
             # Translate the results into TypeEvalPy format
-            translated = translator.process_annotations(result, file.parent, strip_generics=True)
+            translated = translator.process_annotations(result, file.parent)
 
             # Save translated file to the same folder /tmp/results
             json_file_path = str(file).replace(".py", "_result.json")
