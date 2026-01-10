@@ -8,6 +8,9 @@ import tempfile
 from pathlib import Path
 from sys import stdout
 
+import libcst as cst
+from libcst.metadata import MetadataWrapper, QualifiedNameProvider
+
 import utils
 from type_normalizer import normalize_types
 
@@ -70,70 +73,196 @@ def run_pytype(file_path, output_dir):
         return None
 
 
+class TypeQualifier(cst.CSTVisitor):
+    """Visitor that qualifies type names using import information"""
+
+    METADATA_DEPENDENCIES = (QualifiedNameProvider,)
+
+    def __init__(self):
+        self.types_info = {
+            'module_vars': {},  # name -> type
+            'classes': {},  # class_name -> {methods: {}, attributes: {}}
+            'functions': {}  # func_name -> {params: {}, return: type}
+        }
+
+    def _qualify_name(self, name_node):
+        """Qualify a single name node, stripping builtins prefix"""
+        qualified_names = self.get_metadata(QualifiedNameProvider, name_node, set())
+
+        if qualified_names:
+            qname = list(qualified_names)[0]
+            qualified_name = qname.name
+
+            # Strip 'builtins.' prefix since builtins are implicit in Python
+            if qualified_name.startswith('builtins.'):
+                return qualified_name[len('builtins.'):]
+
+            return qualified_name
+
+        # No qualified name found, return the raw name
+        if isinstance(name_node, cst.Name):
+            return name_node.value
+        return None
+
+    def _node_to_code(self, node):
+        """Convert a CST node to its code representation"""
+        # Create a minimal module wrapper to get the code
+        try:
+            return cst.Module([]).code_for_node(node)
+        except:
+            # Fallback: just return empty string
+            return ""
+
+    def _qualify_annotation(self, annotation_node):
+        """Convert an annotation node to a fully qualified string
+
+        Fully qualifies imported names but keeps builtins unqualified.
+        For example: 'count' from 'itertools' -> 'itertools.count'
+        But: 'int', 'str', 'list' stay as-is (not 'builtins.int')
+
+        Handles complex annotations like List[int], Union[str, count], etc.
+        """
+        if annotation_node is None:
+            return None
+
+        # Handle simple Name nodes (e.g., 'int', 'count')
+        if isinstance(annotation_node, cst.Name):
+            qualified = self._qualify_name(annotation_node)
+            return qualified if qualified else annotation_node.value
+
+        # Handle Subscript nodes (e.g., List[int], Dict[str, int])
+        elif isinstance(annotation_node, cst.Subscript):
+            # Qualify the base type (e.g., 'List' in List[int])
+            if isinstance(annotation_node.value, cst.Name):
+                base = self._qualify_name(annotation_node.value)
+                if not base:
+                    base = annotation_node.value.value
+            else:
+                base = self._node_to_code(annotation_node.value)
+
+            # Process the subscript slice
+            slice_parts = []
+            for slice_elem in annotation_node.slice:
+                if isinstance(slice_elem, cst.SubscriptElement):
+                    slice_value = slice_elem.slice
+                    if isinstance(slice_value, cst.Index):
+                        inner = self._qualify_annotation(slice_value.value)
+                        if inner:
+                            slice_parts.append(inner)
+                    else:
+                        slice_parts.append(self._node_to_code(slice_value))
+
+            if slice_parts:
+                return f"{base}[{', '.join(slice_parts)}]"
+            else:
+                return base
+
+        # Handle Attribute nodes (e.g., 'typing.List')
+        elif isinstance(annotation_node, cst.Attribute):
+            return self._node_to_code(annotation_node)
+
+        # For other complex types, generate the code and try to qualify names within
+        else:
+            return self._node_to_code(annotation_node)
+
+    def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
+        """Module-level variable annotation"""
+        if isinstance(node.target, cst.Name):
+            var_name = node.target.value
+            var_type = self._qualify_annotation(node.annotation.annotation)
+            self.types_info['module_vars'][var_name] = var_type
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        """Module-level function or method"""
+        func_name = node.name.value
+
+        # Extract return type
+        return_type = None
+        if node.returns:
+            return_type = self._qualify_annotation(node.returns.annotation)
+
+        # Extract parameter types
+        params = {}
+        for param in node.params.params:
+            if param.annotation:
+                param_type = self._qualify_annotation(param.annotation.annotation)
+                params[param.name.value] = param_type
+
+        func_info = {
+            'params': params,
+            'return': return_type
+        }
+
+        self.types_info['functions'][func_name] = func_info
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        """Class definition"""
+        class_name = node.name.value
+        class_info = {
+            'methods': {},
+            'attributes': {}
+        }
+
+        # Process class body
+        for item in node.body.body:
+            if isinstance(item, cst.FunctionDef):
+                # Method
+                method_name = item.name.value
+                return_type = None
+                if item.returns:
+                    return_type = self._qualify_annotation(item.returns.annotation)
+
+                params = {}
+                for param in item.params.params:
+                    if param.annotation:
+                        param_type = self._qualify_annotation(param.annotation.annotation)
+                        params[param.name.value] = param_type
+
+                method_info = {
+                    'params': params,
+                    'return': return_type
+                }
+                class_info['methods'][method_name] = method_info
+
+            elif isinstance(item, cst.SimpleStatementLine):
+                # Check for annotated assignments (class attributes)
+                for stmt in item.body:
+                    if isinstance(stmt, cst.AnnAssign):
+                        if isinstance(stmt.target, cst.Name):
+                            attr_name = stmt.target.value
+                            attr_type = self._qualify_annotation(stmt.annotation.annotation)
+                            class_info['attributes'][attr_name] = attr_type
+
+        self.types_info['classes'][class_name] = class_info
+
+
 def parse_pyi_file(pyi_path):
-    """Parse a .pyi file and extract type information"""
+    """Parse a .pyi file and extract type information with fully qualified names"""
     with open(pyi_path) as f:
         pyi_content = f.read()
 
     try:
-        tree = ast.parse(pyi_content)
+        # Parse with libcst
+        module = cst.parse_module(pyi_content)
+
+        # Wrap with metadata to resolve qualified names
+        wrapper = MetadataWrapper(module)
+
+        # Visit the tree to extract types
+        visitor = TypeQualifier()
+        wrapper.visit(visitor)
+
+        return visitor.types_info
+
     except Exception as e:
         logger.error(f"Failed to parse {pyi_path}: {e}")
-        return {}
-
-    types_info = {
-        'module_vars': {},  # name -> type
-        'classes': {},  # class_name -> {methods: {}, attributes: {}}
-        'functions': {}  # func_name -> {params: {}, return: type}
-    }
-
-    for node in tree.body:
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            # Module-level variable
-            var_name = node.target.id
-            var_type = ast.unparse(node.annotation)
-            types_info['module_vars'][var_name] = var_type
-
-        elif isinstance(node, ast.FunctionDef):
-            # Module-level function
-            func_info = {
-                'params': {},
-                'return': ast.unparse(node.returns) if node.returns else None
-            }
-            for arg in node.args.args:
-                if arg.annotation:
-                    func_info['params'][arg.arg] = ast.unparse(arg.annotation)
-            types_info['functions'][node.name] = func_info
-
-        elif isinstance(node, ast.ClassDef):
-            # Class definition
-            class_info = {
-                'methods': {},
-                'attributes': {}
-            }
-
-            for item in node.body:
-                if isinstance(item, ast.FunctionDef):
-                    # Method
-                    method_info = {
-                        'params': {},
-                        'return': ast.unparse(item.returns) if item.returns else None
-                    }
-                    for arg in item.args.args:
-                        if arg.annotation:
-                            method_info['params'][arg.arg] = ast.unparse(arg.annotation)
-                    class_info['methods'][item.name] = method_info
-
-                elif isinstance(item, ast.AnnAssign):
-                    # Class attribute
-                    if isinstance(item.target, ast.Name):
-                        attr_name = item.target.id
-                        attr_type = ast.unparse(item.annotation)
-                        class_info['attributes'][attr_name] = attr_type
-
-            types_info['classes'][node.name] = class_info
-
-    return types_info
+        import traceback
+        logger.error(traceback.format_exc())
+        return {
+            'module_vars': {},
+            'classes': {},
+            'functions': {}
+        }
 
 
 def match_types_to_source(types_info, source_code, file_name):
