@@ -74,6 +74,7 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
     Returns a dict with keys:
     - exact: True if exact match
     - equivalence: True if semantically equivalent (same functionality)
+    - partial: True if some overlap but not complete match
 
     For union types (multiple types), ALL types must match, not just some.
     E.g., GT=['str', 'int'] requires pred to cover both str and int.
@@ -84,6 +85,7 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
     result = {
         'exact': False,
         'equivalence': False,
+        'partial': False,
     }
 
     # 1. Exact match
@@ -116,6 +118,28 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
 
     if all_gt_covered and all_pred_covered:
         result['equivalence'] = True
+        return result
+
+    # 3. Partial match
+    # At least some overlap, but not complete coverage in both directions
+    # Check if any GT type is covered by predictions
+    some_gt_covered = False
+    for gt_type in gt_types:
+        gt_equiv = get_equivalent_types(gt_type)
+        if pred_set & gt_equiv:  # Some intersection
+            some_gt_covered = True
+            break
+
+    # Check if any pred type is covered by GT
+    some_pred_covered = False
+    for pred_type in pred_types:
+        pred_equiv = get_equivalent_types(pred_type)
+        if gt_set & pred_equiv:  # Some intersection
+            some_pred_covered = True
+            break
+
+    if some_gt_covered or some_pred_covered:
+        result['partial'] = True
 
     return result
 
@@ -131,9 +155,11 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'total': 0,
         'exact': 0,
         'equivalence': 0,
+        'partial': 0,
         'missing': 0,
         'examples': {
             'equivalence_only': [],
+            'partial': [],
         }
     }
 
@@ -187,6 +213,19 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
 
                 if len(stats['examples']['equivalence_only']) < 5:
                     stats['examples']['equivalence_only'].append(example)
+            elif comparison['partial']:
+                stats['partial'] += 1
+
+                # Save example
+                example = {
+                    'file': str(gt_file.relative_to(tool_dir)),
+                    'line': gt_item['line_number'],
+                    'gt': gt_types,
+                    'pred': pred_types
+                }
+
+                if len(stats['examples']['partial']) < 5:
+                    stats['examples']['partial'].append(example)
 
     return stats
 
@@ -240,6 +279,7 @@ def main():
         print("-" * 80)
         print(f"Total facts: {stats['total']}")
         print(f"Missing predictions: {stats['missing']}")
+        print(f"Partial matches: {stats['partial']}")
         print()
 
         # Always use total facts as denominator for fair comparison
@@ -257,6 +297,11 @@ def main():
             print("\n  Examples fixed by semantic equivalence (same functionality):")
             for ex in stats['examples']['equivalence_only']:
                 print(f"    {ex['file']}:{ex['line']}  {ex['gt']} -> {ex['pred']}")
+
+        if stats['examples']['partial']:
+            print("\n  Examples of partial matches (some overlap but incomplete):")
+            for ex in stats['examples']['partial']:
+                print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
 
     # Summary
     print("\n" + "="*80)
@@ -281,11 +326,12 @@ def main():
         row = [
             tool,
             f"{stats['exact']}/{total} ({stats['exact']/total*100:.1f}%)",
-            f"{stats['equivalence']}/{total} ({stats['equivalence']/total*100:.1f}%)"
+            f"{stats['equivalence']}/{total} ({stats['equivalence']/total*100:.1f}%)",
+            f"{stats['partial']}/{total} ({stats['partial']/total*100:.1f}%)"
         ]
         table_data.append(row)
 
-    headers = ["Tool", "Exact Match", "With Sem. Equiv."]
+    headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Partial Match"]
     print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
