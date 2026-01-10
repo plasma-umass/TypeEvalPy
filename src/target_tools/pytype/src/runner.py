@@ -84,6 +84,7 @@ class TypeQualifier(cst.CSTVisitor):
             'classes': {},  # class_name -> {methods: {}, attributes: {}}
             'functions': {}  # func_name -> {params: {}, return: type}
         }
+        self.typevar_map = {}  # Maps TypeVar names to their replacement types
 
     def _qualify_name(self, name_node):
         """Qualify a single name node, stripping builtins prefix"""
@@ -113,6 +114,91 @@ class TypeQualifier(cst.CSTVisitor):
             # Fallback: just return empty string
             return ""
 
+    def _replace_typevars_in_string(self, type_str):
+        """Replace TypeVar references in a type string with their replacements"""
+        if not type_str:
+            return type_str
+
+        result = type_str
+        for typevar_name, replacement in self.typevar_map.items():
+            # Replace whole word matches only (using word boundaries)
+            import re
+            pattern = r'\b' + re.escape(typevar_name) + r'\b'
+            result = re.sub(pattern, replacement, result)
+
+        return result
+
+    def _parse_typevar_assignment(self, node):
+        """Parse TypeVar assignment to extract bounds/constraints
+
+        Examples:
+        - _T0 = TypeVar('_T0') -> None (unconstrained)
+        - _T0 = TypeVar('_T0', int, str) -> ['int', 'str'] (constrained)
+        - _T0 = TypeVar('_T0', bound=int) -> ['int'] (bounded)
+        """
+        if not isinstance(node, cst.SimpleStatementLine):
+            return
+
+        for stmt in node.body:
+            if not isinstance(stmt, cst.Assign):
+                continue
+
+            # Check if RHS is a TypeVar call
+            if not isinstance(stmt.value, cst.Call):
+                continue
+
+            call_name = None
+            if isinstance(stmt.value.func, cst.Name):
+                call_name = stmt.value.func.value
+            elif isinstance(stmt.value.func, cst.Attribute):
+                call_name = stmt.value.func.attr.value
+
+            if call_name != 'TypeVar':
+                continue
+
+            # Get the TypeVar name from the assignment target
+            typevar_name = None
+            for target in stmt.targets:
+                if isinstance(target.target, cst.Name):
+                    typevar_name = target.target.value
+                    break
+
+            if not typevar_name:
+                continue
+
+            # Parse TypeVar arguments
+            constraints = []
+            bound_type = None
+
+            for arg in stmt.value.args:
+                # Skip the first argument (the name string)
+                if isinstance(arg.value, (cst.SimpleString, cst.ConcatenatedString)):
+                    continue
+
+                # Check for bound= keyword argument
+                if arg.keyword and arg.keyword.value == 'bound':
+                    bound_type = self._qualify_annotation(arg.value)
+                    break
+
+                # Positional arguments after the name are constraints
+                if not arg.keyword:
+                    constraint = self._qualify_annotation(arg.value)
+                    if constraint:
+                        constraints.append(constraint)
+
+            # Determine replacement type
+            if bound_type:
+                self.typevar_map[typevar_name] = bound_type
+            elif constraints:
+                # Multiple constraints become a union
+                if len(constraints) == 1:
+                    self.typevar_map[typevar_name] = constraints[0]
+                else:
+                    self.typevar_map[typevar_name] = f"typing.Union[{', '.join(constraints)}]"
+            else:
+                # Unconstrained TypeVar becomes Any
+                self.typevar_map[typevar_name] = "typing.Any"
+
     def _qualify_annotation(self, annotation_node):
         """Convert an annotation node to a fully qualified string
 
@@ -121,14 +207,21 @@ class TypeQualifier(cst.CSTVisitor):
         But: 'int', 'str', 'list' stay as-is (not 'builtins.int')
 
         Handles complex annotations like List[int], Union[str, count], etc.
+        Also replaces TypeVar references with their bounds/constraints or typing.Any.
         """
         if annotation_node is None:
             return None
 
-        # Handle simple Name nodes (e.g., 'int', 'count')
+        # Handle simple Name nodes (e.g., 'int', 'count', '_T0')
         if isinstance(annotation_node, cst.Name):
             qualified = self._qualify_name(annotation_node)
-            return qualified if qualified else annotation_node.value
+            name = qualified if qualified else annotation_node.value
+
+            # Replace TypeVar references
+            if name in self.typevar_map:
+                return self.typevar_map[name]
+
+            return name
 
         # Handle Subscript nodes (e.g., List[int], Dict[str, int])
         elif isinstance(annotation_node, cst.Subscript):
@@ -159,16 +252,28 @@ class TypeQualifier(cst.CSTVisitor):
 
         # Handle Attribute nodes (e.g., 'typing.List')
         elif isinstance(annotation_node, cst.Attribute):
-            return self._node_to_code(annotation_node)
+            code = self._node_to_code(annotation_node)
+            return self._replace_typevars_in_string(code)
 
-        # For other complex types, generate the code and try to qualify names within
+        # For other complex types, generate the code and replace TypeVars
         else:
-            return self._node_to_code(annotation_node)
+            code = self._node_to_code(annotation_node)
+            return self._replace_typevars_in_string(code)
+
+    def visit_SimpleStatementLine(self, node: cst.SimpleStatementLine) -> None:
+        """Process simple statements, including TypeVar assignments"""
+        # First check for TypeVar assignments
+        self._parse_typevar_assignment(node)
 
     def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
         """Module-level variable annotation"""
         if isinstance(node.target, cst.Name):
             var_name = node.target.value
+
+            # Skip variables that are TypeVars themselves
+            if var_name in self.typevar_map:
+                return
+
             var_type = self._qualify_annotation(node.annotation.annotation)
             self.types_info['module_vars'][var_name] = var_type
 
