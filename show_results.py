@@ -74,7 +74,7 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
     Returns a dict with keys:
     - exact: True if exact match
     - equivalence: True if semantically equivalent (same functionality)
-    - partial: True if some overlap but not complete match
+    - incomplete: True if predictions are correct but missing some GT types
 
     For union types (multiple types), ALL types must match, not just some.
     E.g., GT=['str', 'int'] requires pred to cover both str and int.
@@ -85,7 +85,7 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
     result = {
         'exact': False,
         'equivalence': False,
-        'partial': False,
+        'incomplete': False,
     }
 
     # 1. Exact match
@@ -120,26 +120,23 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
         result['equivalence'] = True
         return result
 
-    # 3. Partial match
-    # At least some overlap, but not complete coverage in both directions
-    # Check if any GT type is covered by predictions
-    some_gt_covered = False
-    for gt_type in gt_types:
-        gt_equiv = get_equivalent_types(gt_type)
-        if pred_set & gt_equiv:  # Some intersection
-            some_gt_covered = True
-            break
+    # 3. Incomplete match
+    # Predictions have some correct types but are incomplete (under-prediction only).
+    # NO incorrect types are allowed - all pred types must be valid.
+    # This means: all pred types covered by GT, but not all GT types covered by pred.
 
-    # Check if any pred type is covered by GT
-    some_pred_covered = False
+    # First, verify all prediction types are correct (covered by GT)
+    all_pred_covered_by_gt = True
     for pred_type in pred_types:
         pred_equiv = get_equivalent_types(pred_type)
-        if gt_set & pred_equiv:  # Some intersection
-            some_pred_covered = True
+        if not (gt_set & pred_equiv):  # No intersection with GT
+            all_pred_covered_by_gt = False
             break
 
-    if some_gt_covered or some_pred_covered:
-        result['partial'] = True
+    # Only check for incomplete if all predictions are correct
+    if all_pred_covered_by_gt and not all_gt_covered:
+        # All predictions are correct, but some GT types are missing
+        result['incomplete'] = True
 
     return result
 
@@ -155,11 +152,11 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'total': 0,
         'exact': 0,
         'equivalence': 0,
-        'partial': 0,
+        'incomplete': 0,
         'missing': 0,
         'examples': {
             'equivalence_only': [],
-            'partial': [],
+            'incomplete': [],
         }
     }
 
@@ -213,8 +210,8 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
 
                 if len(stats['examples']['equivalence_only']) < 5:
                     stats['examples']['equivalence_only'].append(example)
-            elif comparison['partial']:
-                stats['partial'] += 1
+            elif comparison['incomplete']:
+                stats['incomplete'] += 1
 
                 # Save example
                 example = {
@@ -224,8 +221,8 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
                     'pred': pred_types
                 }
 
-                if len(stats['examples']['partial']) < 5:
-                    stats['examples']['partial'].append(example)
+                if len(stats['examples']['incomplete']) < 5:
+                    stats['examples']['incomplete'].append(example)
 
     return stats
 
@@ -279,7 +276,7 @@ def main():
         print("-" * 80)
         print(f"Total facts: {stats['total']}")
         print(f"Missing predictions: {stats['missing']}")
-        print(f"Partial matches: {stats['partial']}")
+        print(f"Incomplete matches: {stats['incomplete']}")
         print()
 
         # Always use total facts as denominator for fair comparison
@@ -298,9 +295,9 @@ def main():
             for ex in stats['examples']['equivalence_only']:
                 print(f"    {ex['file']}:{ex['line']}  {ex['gt']} -> {ex['pred']}")
 
-        if stats['examples']['partial']:
-            print("\n  Examples of partial matches (some overlap but incomplete):")
-            for ex in stats['examples']['partial']:
+        if stats['examples']['incomplete']:
+            print("\n  Examples of incomplete matches (correct but missing types):")
+            for ex in stats['examples']['incomplete']:
                 print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
 
     # Summary
@@ -327,11 +324,11 @@ def main():
             tool,
             f"{stats['exact']}/{total} ({stats['exact']/total*100:.1f}%)",
             f"{stats['equivalence']}/{total} ({stats['equivalence']/total*100:.1f}%)",
-            f"{stats['partial']}/{total} ({stats['partial']/total*100:.1f}%)"
+            f"{stats['incomplete']}/{total} ({stats['incomplete']/total*100:.1f}%)"
         ]
         table_data.append(row)
 
-    headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Partial Match"]
+    headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Incomplete Match"]
     print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
