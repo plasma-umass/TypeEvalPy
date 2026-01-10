@@ -285,7 +285,7 @@ def main():
         ]
         table_data.append(row)
 
-    headers = ["Tool", "Exact Match", "With Semantic Equiv"]
+    headers = ["Tool", "Exact Match", "With Sem. Equiv."]
     print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
