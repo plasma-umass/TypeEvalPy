@@ -358,9 +358,9 @@ def main():
 
     if args.latex:
         # LaTeX output
-        print(r"\begin{tabular}{lrrr}")
+        print(r"\begin{tabular}{lrr}")
         print(r"\toprule")
-        print(r"Tool & Exact Match & With Sem. Equiv. & Incomplete Match \\")
+        print(r"Tool & Exact Match & Semantic Match \\")
         print(r"\midrule")
 
         for row in table_data_raw:
@@ -369,11 +369,9 @@ def main():
             # Use \PCT{} for max values, \pct{} for others
             exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
             equiv_macro = r"\PCT" if equiv_pct == max_equiv else r"\pct"
-            incomplete_macro = r"\PCT" if incomplete_pct == max_incomplete else r"\pct"
 
             print(f"{tool_label} & {exact_count}/{total} ({exact_macro}{{{exact_pct:.1f}}}) & "
-                  f"{equiv_count}/{total} ({equiv_macro}{{{equiv_pct:.1f}}}) & "
-                  f"{incomplete_count}/{total} ({incomplete_macro}{{{incomplete_pct:.1f}}}) \\\\")
+                  f"{equiv_count}/{total} ({equiv_macro}{{{equiv_pct:.1f}}}) \\\\")
 
         print(r"\bottomrule")
         print(r"\end{tabular}")
@@ -390,7 +388,7 @@ def main():
             ]
             table_data.append(formatted_row)
 
-        headers = ["Tool", "Exact Match", "With Sem. Equiv.", "Incomplete Match"]
+        headers = ["Tool", "Exact Match", "Semantic Match", "Incomplete Match"]
         print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
