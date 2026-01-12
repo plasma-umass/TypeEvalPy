@@ -13,12 +13,18 @@ RUN apt-get update \
     && apt-get -y install gcc
 RUN apt-get -y install git
 
-COPY requirements.txt /app/requirements.txt
+# Copy shared utilities
+COPY shared_utils /tmp/shared_utils
+
+# Copy tool-specific files
+COPY righttyper/requirements.txt /app/requirements.txt
+COPY righttyper/src /tmp/src
+
+# Set PYTHONPATH to include shared utilities
+ENV PYTHONPATH="/tmp/shared_utils:${PYTHONPATH}"
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-
-COPY src /tmp/src
 
 # Keep the container alive
 CMD ["bash"]

@@ -20,15 +20,18 @@ RUN git clone https://github.com/jifengwu2k/quac.git /app/quac
 RUN pip install --upgrade pip
 RUN pip install -r /app/quac/requirements.txt
 
+# Copy shared utilities
+COPY shared_utils /tmp/shared_utils
+
 # Install our runner's additional dependencies
-COPY requirements.txt /app/runner_requirements.txt
+COPY quac/requirements.txt /app/runner_requirements.txt
 RUN pip install -r /app/runner_requirements.txt
 
-# Add QuAC to Python path so it can be imported
-ENV PYTHONPATH="/app/quac:${PYTHONPATH}"
+# Add QuAC and shared_utils to Python path
+ENV PYTHONPATH="/tmp/shared_utils:/app/quac:${PYTHONPATH}"
 
 # Copy our runner code
-COPY src /tmp/src
+COPY quac/src /tmp/src
 
 # Run the application
 CMD ["bash"]

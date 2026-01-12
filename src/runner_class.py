@@ -185,8 +185,9 @@ class PytypeRunner(TypeEvalPyRunner):
     ):
         super().__init__(
             "pytype",
-            "./target_tools/pytype",
+            "./target_tools",
             host_results_path,
+            dockerfile_name="pytype/Dockerfile",
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )
@@ -332,8 +333,9 @@ class Type4pyRunner(TypeEvalPyRunner):
     ):
         super().__init__(
             "type4py",
-            "./target_tools/type4py",
+            "./target_tools",
             host_results_path,
+            dockerfile_name="type4py/Dockerfile",
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )
@@ -540,8 +542,9 @@ class RightTyperRunner(TypeEvalPyRunner):
     ):
         super().__init__(
             "righttyper",
-            "./target_tools/righttyper",
+            "./target_tools",
             host_results_path,
+            dockerfile_name="righttyper/Dockerfile",
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )
@@ -559,8 +562,9 @@ class QuACRunner(TypeEvalPyRunner):
     ):
         super().__init__(
             "quac",
-            "./target_tools/quac",
+            "./target_tools",
             host_results_path,
+            dockerfile_name="quac/Dockerfile",
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )
@@ -578,8 +582,9 @@ class MonkeyTypeRunner(TypeEvalPyRunner):
     ):
         super().__init__(
             "monkeytype",
-            "./target_tools/monkeytype",
+            "./target_tools",
             host_results_path,
+            dockerfile_name="monkeytype/Dockerfile",
             nocache=nocache,
             custom_benchmark_dir=custom_benchmark_dir,
         )

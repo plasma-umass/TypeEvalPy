@@ -12,12 +12,18 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get -y install gcc
 
-COPY requirements.txt /app/requirements.txt
+# Copy shared utilities
+COPY shared_utils /tmp/shared_utils
+
+# Copy tool-specific files
+COPY pytype/requirements.txt /app/requirements.txt
+COPY pytype/src /tmp/src
+
+# Set PYTHONPATH to include shared utilities
+ENV PYTHONPATH="/tmp/shared_utils:${PYTHONPATH}"
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-
-COPY src /tmp/src
 
 # Run the application
 CMD ["bash"]

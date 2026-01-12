@@ -17,12 +17,18 @@ RUN apt-get update \
 RUN pip install --upgrade pip
 RUN pip install monkeytype
 
+# Copy shared utilities
+COPY shared_utils /tmp/shared_utils
+
 # Install our runner's additional dependencies
-COPY requirements.txt /app/runner_requirements.txt
+COPY monkeytype/requirements.txt /app/runner_requirements.txt
 RUN pip install -r /app/runner_requirements.txt
 
+# Set PYTHONPATH to include shared utilities
+ENV PYTHONPATH="/tmp/shared_utils:${PYTHONPATH}"
+
 # Copy our runner code
-COPY src /tmp/src
+COPY monkeytype/src /tmp/src
 
 # Run the application
 CMD ["bash"]
