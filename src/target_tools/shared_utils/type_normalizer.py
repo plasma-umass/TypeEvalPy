@@ -16,17 +16,25 @@ def _code(expr: cst.BaseExpression) -> str:
     return _RENDER_MODULE.code_for_node(expr).strip()
 
 _NAME_MAP = {
+    # Callable
     'typing.Callable': 'callable',
     'collections.abc.Callable': 'callable',
+    # Iterator
     'typing.Iterator': 'iterator',
     'collections.abc.Iterator': 'iterator',
+    # Generator
     'typing.Generator': 'generator',
     'collections.abc.Generator': 'generator',
-    'typing.Type': 'type',
+    # Container types
     'typing.List': 'list',
     'typing.Dict': 'dict',
     'typing.Set': 'set',
+    'typing.Tuple': 'tuple',
+    'typing.FrozenSet': 'frozenset',
+    # Other typing
+    'typing.Type': 'type',
     'types.CodeType': 'code',
+    # None
     'None': 'Nonetype',
 }
 
