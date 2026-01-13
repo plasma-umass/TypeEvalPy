@@ -23,17 +23,19 @@
 
 ## 🛠️ Supported Tools
 
-| Supported :white_check_mark:                                          | In-progress :wrench:                                                 | Planned :bulb:                                        |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
-| [HeaderGen](https://github.com/secure-software-engineering/HeaderGen) | [Intellij PSI](https://plugins.jetbrains.com/docs/intellij/psi.html) | [MonkeyType](https://github.com/Instagram/MonkeyType) |
-| [Jedi](https://github.com/davidhalter/jedi)                           | [Pyre](https://github.com/facebook/pyre-check)                       | [Pyannotate](https://github.com/dropbox/pyannotate)   |
+| Supported :white_check_mark:                                          | In-progress :wrench:                                                 |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [HeaderGen](https://github.com/secure-software-engineering/HeaderGen) | [Intellij PSI](https://plugins.jetbrains.com/docs/intellij/psi.html) |
+| [Jedi](https://github.com/davidhalter/jedi)                           | [Pyre](https://github.com/facebook/pyre-check)                       |
 | [Pyright](https://github.com/microsoft/pyright)                       | [PySonar2](https://github.com/yinwang0/pysonar2)                     |
-| [HiTyper](https://github.com/JohnnyPeng18/HiTyper)                    | [Pytype](https://github.com/google/pytype)                           |
-| [Scalpel](https://github.com/SMAT-Lab/Scalpel/issues)                 | [TypeT5](https://github.com/utopia-group/TypeT5)                     |
+| [HiTyper](https://github.com/JohnnyPeng18/HiTyper)                    | [TypeT5](https://github.com/utopia-group/TypeT5)                     |
+| [Scalpel](https://github.com/SMAT-Lab/Scalpel/issues)                 |                                                                      |
 | [Type4Py](https://github.com/saltudelft/type4py)                      |                                                                      |
 | [GPT](https://openai.com)                                             |                                                                      |
 | [Ollama](https://ollama.ai)                                           |                                                                      |
 | [RightTyper](https://github.com/RightTyper/RightTyper)                |                                                                      |
+| [MonkeyType](https://github.com/Instagram/MonkeyType)                 |
+| [Pytype](https://github.com/google/pytype)                            |
 
 ---
 
