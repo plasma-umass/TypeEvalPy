@@ -23,21 +23,34 @@
 
 ## 🛠️ Supported Tools
 
-| Supported :white_check_mark:                                          | In-progress :wrench:                                                 |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [HeaderGen](https://github.com/secure-software-engineering/HeaderGen) | [Intellij PSI](https://plugins.jetbrains.com/docs/intellij/psi.html) |
-| [Jedi](https://github.com/davidhalter/jedi)                           | [Pyre](https://github.com/facebook/pyre-check)                       |
-| [Pyright](https://github.com/microsoft/pyright)                       | [PySonar2](https://github.com/yinwang0/pysonar2)                     |
-| [HiTyper](https://github.com/JohnnyPeng18/HiTyper)                    | [TypeT5](https://github.com/utopia-group/TypeT5)                     |
-| [Scalpel](https://github.com/SMAT-Lab/Scalpel/issues)                 |                                                                      |
-| [Type4Py](https://github.com/saltudelft/type4py)                      |                                                                      |
-| [GPT](https://openai.com)                                             |                                                                      |
-| [Ollama](https://ollama.ai)                                           |                                                                      |
-| [RightTyper](https://github.com/RightTyper/RightTyper)                |                                                                      |
-| [MonkeyType](https://github.com/Instagram/MonkeyType)                 |
-| [Pytype](https://github.com/google/pytype)                            |
-
----
+<table>
+  <tbody>
+    <tr>
+      <td><a href="https://github.com/secure-software-engineering/HeaderGen">HeaderGen</a></td>
+      <td><a href="https://openai.com">GPT</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/davidhalter/jedi">Jedi</a></td>
+      <td><a href="https://ollama.ai">Ollama</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/microsoft/pyright">Pyright</a></td>
+      <td><a href="https://github.com/RightTyper/RightTyper">RightTyper</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/JohnnyPeng18/HiTyper">HiTyper</a></td>
+      <td><a href="https://github.com/Instagram/MonkeyType">MonkeyType</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/SMAT-Lab/Scalpel/issues">Scalpel</a></td>
+      <td><a href="https://github.com/google/pytype">Pytype</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/saltudelft/type4py">Type4Py</a></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
 
 ## 🏆 TypeEvalPy Leaderboard
 
