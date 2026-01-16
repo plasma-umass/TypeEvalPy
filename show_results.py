@@ -156,6 +156,8 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'total_functions': 0,
         'total_variables': 0,
         'equivalence': 0,
+        'equivalence_functions': 0,  # Semantic equivalence for functions
+        'equivalence_variables': 0,  # Semantic equivalence for variables
         'incomplete': 0,
         'missing': 0,
         'examples': {
@@ -213,11 +215,19 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
                 # Track category-specific exact matches
                 if is_function:
                     stats['exact_functions'] += 1
+                    stats['equivalence_functions'] += 1
                 elif is_variable:
                     stats['exact_variables'] += 1
+                    stats['equivalence_variables'] += 1
 
             elif comparison['equivalence']:
                 stats['equivalence'] += 1
+
+                # Track category-specific semantic equivalence
+                if is_function:
+                    stats['equivalence_functions'] += 1
+                elif is_variable:
+                    stats['equivalence_variables'] += 1
 
                 # Save example
                 example = {
@@ -342,8 +352,8 @@ def main():
         print("="*80)
 
     # Build table data with raw values
-    # (tool_label, exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct,
-    #  exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count)
+    # (tool_label, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct,
+    #  exact_pct, equiv_pct, total_funcs, total_vars, total)
     table_data_raw = []
     for tool in tool_order:
         run = latest_runs[tool]
@@ -362,131 +372,151 @@ def main():
 
         row = [
             tool_labels.get(tool, tool),
-            stats['exact_functions']/total_funcs*100 if total_funcs > 0 else 0,  # exact functions percentage
-            stats['exact_variables']/total_vars*100 if total_vars > 0 else 0,    # exact variables percentage
+            stats['exact_functions']/total_funcs*100 if total_funcs > 0 else 0,       # exact functions percentage
+            stats['equivalence_functions']/total_funcs*100 if total_funcs > 0 else 0, # equiv functions percentage
+            stats['exact_variables']/total_vars*100 if total_vars > 0 else 0,         # exact variables percentage
+            stats['equivalence_variables']/total_vars*100 if total_vars > 0 else 0,   # equiv variables percentage
             stats['exact']/total*100,                  # total exact percentage
             stats['equivalence']/total*100,            # equiv percentage
-            stats['incomplete']/total*100,             # incomplete percentage
-            stats['exact_functions'],
             total_funcs,
-            stats['exact_variables'],
             total_vars,
-            stats['exact'],
             total,
-            stats['equivalence'],
-            stats['incomplete']
         ]
         table_data_raw.append(row)
 
-    # Sort by Total Semantic (equiv_pct, row[4]) in ascending order
-    table_data_raw.sort(key=lambda row: row[4], reverse=False)
+    # Sort by Total Semantic (equiv_pct, row[6]) in ascending order
+    table_data_raw.sort(key=lambda row: row[6], reverse=False)
 
     # Find max values in each percentage column
     if table_data_raw:
         max_exact_funcs = max(row[1] for row in table_data_raw)
-        max_exact_vars = max(row[2] for row in table_data_raw)
-        max_exact = max(row[3] for row in table_data_raw)
-        max_equiv = max(row[4] for row in table_data_raw)
-        max_incomplete = max(row[5] for row in table_data_raw)
+        max_equiv_funcs = max(row[2] for row in table_data_raw)
+        max_exact_vars = max(row[3] for row in table_data_raw)
+        max_equiv_vars = max(row[4] for row in table_data_raw)
+        max_exact = max(row[5] for row in table_data_raw)
+        max_equiv = max(row[6] for row in table_data_raw)
     else:
-        max_exact_funcs = max_exact_vars = max_exact = max_equiv = max_incomplete = 0
+        max_exact_funcs = max_equiv_funcs = max_exact_vars = max_equiv_vars = max_exact = max_equiv = 0
 
     if args.latex:
-        # LaTeX output - transposed (metrics as rows, tools as columns)
+        # LaTeX output - transposed with vertical category labels using multirow/rotatebox
+        # Requires: \usepackage{multirow}, \usepackage{graphicx}
         num_tools = len(table_data_raw)
-        col_spec = "l" + "r" * num_tools
+        # c for category column, l for metric, then r for each tool
+        col_spec = "c l@{\\hspace{6em}}" + " r" * num_tools
+        print(f"% Requires: \\usepackage{{multirow}}, \\usepackage{{graphicx}}")
         print(f"\\begin{{tabular}}{{{col_spec}}}")
         print(r"\toprule")
 
-        # Header: Metric & Tool1 & Tool2 & ... \\
+        # Header: & Match & Tool1 & Tool2 & ... \\
         tool_names = [row[0] for row in table_data_raw]
-        header = "Match & " + " & ".join(tool_names) + r" \\"
+        header = "& Match & " + " & ".join(tool_names) + r" \\"
         print(header)
         print(r"\midrule")
 
-        # Row 1: Functions (exact)
-        func_values = []
+        # Functions section (2 rows: Exact, Semantic)
+        func_exact_values = []
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
+            exact_funcs_pct = row[1]
             func_macro = r"\PCT" if exact_funcs_pct == max_exact_funcs else r"\pct"
-            func_values.append(f"{func_macro}{{{exact_funcs_pct:.1f}}}")
-        print("Functions & " + " & ".join(func_values) + r" \\")
+            func_exact_values.append(f"{func_macro}{{{exact_funcs_pct:.1f}}}")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize funcs.}} & Exact & " + " & ".join(func_exact_values) + r" \\")
 
-        # Row 2: Variables (exact)
-        var_values = []
+        func_equiv_values = []
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
-            var_macro = r"\PCT" if exact_vars_pct == max_exact_vars else r"\pct"
-            var_values.append(f"{var_macro}{{{exact_vars_pct:.1f}}}")
-        print("Variables & " + " & ".join(var_values) + r" \\")
+            equiv_funcs_pct = row[2]
+            func_equiv_macro = r"\PCT" if equiv_funcs_pct == max_equiv_funcs else r"\pct"
+            func_equiv_values.append(f"{func_equiv_macro}{{{equiv_funcs_pct:.1f}}}")
+        print("& Semantic & " + " & ".join(func_equiv_values) + r" \\")
         print(r"\midrule")
 
-        # Row 3: Total Exact Match
+        # Variables section (2 rows: Exact, Semantic)
+        var_exact_values = []
+        for row in table_data_raw:
+            exact_vars_pct = row[3]
+            var_macro = r"\PCT" if exact_vars_pct == max_exact_vars else r"\pct"
+            var_exact_values.append(f"{var_macro}{{{exact_vars_pct:.1f}}}")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize vars.}} & Exact & " + " & ".join(var_exact_values) + r" \\")
+
+        var_equiv_values = []
+        for row in table_data_raw:
+            equiv_vars_pct = row[4]
+            var_equiv_macro = r"\PCT" if equiv_vars_pct == max_equiv_vars else r"\pct"
+            var_equiv_values.append(f"{var_equiv_macro}{{{equiv_vars_pct:.1f}}}")
+        print("& Semantic & " + " & ".join(var_equiv_values) + r" \\")
+        print(r"\midrule")
+
+        # Overall section (2 rows: Exact, Semantic)
+        # Row 1: Overall Exact Match
         exact_values = []
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
+            exact_pct = row[5]
             exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
             exact_values.append(f"{exact_macro}{{{exact_pct:.1f}}}")
-        print("Total Exact & " + " & ".join(exact_values) + r" \\")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize overall}} & Exact & " + " & ".join(exact_values) + r" \\")
 
-        # Row 4: Total Semantic Match
+        # Row 2: Overall Semantic Match
         equiv_values = []
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
+            equiv_pct = row[6]
             equiv_macro = r"\PCT" if equiv_pct == max_equiv else r"\pct"
             equiv_values.append(f"{equiv_macro}{{{equiv_pct:.1f}}}")
-        print("Total Semantic & " + " & ".join(equiv_values) + r" \\")
+        print("& Semantic & " + " & ".join(equiv_values) + r" \\")
 
         print(r"\bottomrule")
         print(r"\end{tabular}")
 
         # Add note with totals
         # Get totals from first row (all rows have same totals)
+        # row structure: [tool, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct, exact_pct, equiv_pct, total_funcs, total_vars, total]
         if table_data_raw:
-            _, _, _, _, _, _, total_funcs, _, total_vars, _, total, _, _ = table_data_raw[0][1:]
+            total_funcs = table_data_raw[0][7]
+            total_vars = table_data_raw[0][8]
+            total = table_data_raw[0][9]
             print(f"\\\\[0.5em]")
             print(f"\\small Results on {total} type annotations ({total_funcs} functions, {total_vars} variables).")
     else:
         # Normal tabulate output - transposed (metrics as rows, tools as columns)
+        # row structure: [tool, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct, exact_pct, equiv_pct, total_funcs, total_vars, total]
         tool_names = [row[0] for row in table_data_raw]
 
         # Build transposed table data
         table_data = []
 
         # Row 1: Functions (exact)
-        func_row = ["Functions"]
+        func_exact_row = ["Functions Exact"]
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
-            func_row.append(f"{exact_funcs}/{total_funcs} ({exact_funcs_pct:.1f}%)")
-        table_data.append(func_row)
+            func_exact_row.append(f"{row[1]:.1f}%")
+        table_data.append(func_exact_row)
 
-        # Row 2: Variables (exact)
-        var_row = ["Variables"]
+        # Row 2: Functions (semantic)
+        func_equiv_row = ["Functions Semantic"]
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
-            var_row.append(f"{exact_vars}/{total_vars} ({exact_vars_pct:.1f}%)")
-        table_data.append(var_row)
+            func_equiv_row.append(f"{row[2]:.1f}%")
+        table_data.append(func_equiv_row)
 
-        # Row 3: Total Exact Match
-        exact_row = ["Total Exact"]
+        # Row 3: Variables (exact)
+        var_exact_row = ["Variables Exact"]
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
-            exact_row.append(f"{exact_count}/{total} ({exact_pct:.1f}%)")
+            var_exact_row.append(f"{row[3]:.1f}%")
+        table_data.append(var_exact_row)
+
+        # Row 4: Variables (semantic)
+        var_equiv_row = ["Variables Semantic"]
+        for row in table_data_raw:
+            var_equiv_row.append(f"{row[4]:.1f}%")
+        table_data.append(var_equiv_row)
+
+        # Row 5: Overall Exact Match
+        exact_row = ["Overall Exact"]
+        for row in table_data_raw:
+            exact_row.append(f"{row[5]:.1f}%")
         table_data.append(exact_row)
 
-        # Row 4: Total Semantic Match
-        equiv_row = ["Total Semantic"]
+        # Row 6: Overall Semantic Match
+        equiv_row = ["Overall Semantic"]
         for row in table_data_raw:
-            exact_funcs_pct, exact_vars_pct, exact_pct, equiv_pct, incomplete_pct, \
-                exact_funcs, total_funcs, exact_vars, total_vars, exact_count, total, equiv_count, incomplete_count = row[1:]
-            equiv_row.append(f"{equiv_count}/{total} ({equiv_pct:.1f}%)")
+            equiv_row.append(f"{row[6]:.1f}%")
         table_data.append(equiv_row)
 
         headers = ["Match"] + tool_names
