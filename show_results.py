@@ -414,54 +414,54 @@ def main():
         print(header)
         print(r"\midrule")
 
-        # Functions section (2 rows: Exact, Semantic)
-        func_exact_values = []
-        for row in table_data_raw:
-            exact_funcs_pct = row[1]
-            func_macro = r"\PCT" if exact_funcs_pct == max_exact_funcs else r"\pct"
-            func_exact_values.append(f"{func_macro}{{{exact_funcs_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize funcs.}} & Exact & " + " & ".join(func_exact_values) + r" \\")
-
-        func_equiv_values = []
-        for row in table_data_raw:
-            equiv_funcs_pct = row[2]
-            func_equiv_macro = r"\PCT" if equiv_funcs_pct == max_equiv_funcs else r"\pct"
-            func_equiv_values.append(f"{func_equiv_macro}{{{equiv_funcs_pct:.1f}}}")
-        print("& Semantic & " + " & ".join(func_equiv_values) + r" \\")
-        print(r"\midrule")
-
-        # Variables section (2 rows: Exact, Semantic)
-        var_exact_values = []
-        for row in table_data_raw:
-            exact_vars_pct = row[3]
-            var_macro = r"\PCT" if exact_vars_pct == max_exact_vars else r"\pct"
-            var_exact_values.append(f"{var_macro}{{{exact_vars_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize vars.}} & Exact & " + " & ".join(var_exact_values) + r" \\")
-
-        var_equiv_values = []
-        for row in table_data_raw:
-            equiv_vars_pct = row[4]
-            var_equiv_macro = r"\PCT" if equiv_vars_pct == max_equiv_vars else r"\pct"
-            var_equiv_values.append(f"{var_equiv_macro}{{{equiv_vars_pct:.1f}}}")
-        print("& Semantic & " + " & ".join(var_equiv_values) + r" \\")
-        print(r"\midrule")
-
-        # Overall section (2 rows: Exact, Semantic)
-        # Row 1: Overall Exact Match
-        exact_values = []
-        for row in table_data_raw:
-            exact_pct = row[5]
-            exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
-            exact_values.append(f"{exact_macro}{{{exact_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize overall}} & Exact & " + " & ".join(exact_values) + r" \\")
-
-        # Row 2: Overall Semantic Match
+        # Overall section (2 rows: Semantic, Exact)
+        # Row 1: Overall Semantic Match
         equiv_values = []
         for row in table_data_raw:
             equiv_pct = row[6]
             equiv_macro = r"\PCT" if equiv_pct == max_equiv else r"\pct"
             equiv_values.append(f"{equiv_macro}{{{equiv_pct:.1f}}}")
-        print("& Semantic & " + " & ".join(equiv_values) + r" \\")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize overall}} & Semantic & " + " & ".join(equiv_values) + r" \\")
+
+        # Row 2: Overall Exact Match
+        exact_values = []
+        for row in table_data_raw:
+            exact_pct = row[5]
+            exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
+            exact_values.append(f"{exact_macro}{{{exact_pct:.1f}}}")
+        print("& Exact & " + " & ".join(exact_values) + r" \\")
+        print(r"\midrule")
+
+        # Functions section (2 rows: Semantic, Exact)
+        func_equiv_values = []
+        for row in table_data_raw:
+            equiv_funcs_pct = row[2]
+            func_equiv_macro = r"\PCT" if equiv_funcs_pct == max_equiv_funcs else r"\pct"
+            func_equiv_values.append(f"{func_equiv_macro}{{{equiv_funcs_pct:.1f}}}")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize funcs.}} & Semantic & " + " & ".join(func_equiv_values) + r" \\")
+
+        func_exact_values = []
+        for row in table_data_raw:
+            exact_funcs_pct = row[1]
+            func_macro = r"\PCT" if exact_funcs_pct == max_exact_funcs else r"\pct"
+            func_exact_values.append(f"{func_macro}{{{exact_funcs_pct:.1f}}}")
+        print("& Exact & " + " & ".join(func_exact_values) + r" \\")
+        print(r"\midrule")
+
+        # Variables section (2 rows: Semantic, Exact)
+        var_equiv_values = []
+        for row in table_data_raw:
+            equiv_vars_pct = row[4]
+            var_equiv_macro = r"\PCT" if equiv_vars_pct == max_equiv_vars else r"\pct"
+            var_equiv_values.append(f"{var_equiv_macro}{{{equiv_vars_pct:.1f}}}")
+        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize vars.}} & Semantic & " + " & ".join(var_equiv_values) + r" \\")
+
+        var_exact_values = []
+        for row in table_data_raw:
+            exact_vars_pct = row[3]
+            var_macro = r"\PCT" if exact_vars_pct == max_exact_vars else r"\pct"
+            var_exact_values.append(f"{var_macro}{{{exact_vars_pct:.1f}}}")
+        print("& Exact & " + " & ".join(var_exact_values) + r" \\")
 
         print(r"\bottomrule")
         print(r"\end{tabular}")
@@ -483,41 +483,41 @@ def main():
         # Build transposed table data
         table_data = []
 
-        # Row 1: Functions (exact)
-        func_exact_row = ["Functions Exact"]
+        # Row 1: Overall Semantic Match
+        equiv_row = ["Overall Semantic"]
         for row in table_data_raw:
-            func_exact_row.append(f"{row[1]:.1f}%")
-        table_data.append(func_exact_row)
+            equiv_row.append(f"{row[6]:.1f}%")
+        table_data.append(equiv_row)
 
-        # Row 2: Functions (semantic)
-        func_equiv_row = ["Functions Semantic"]
-        for row in table_data_raw:
-            func_equiv_row.append(f"{row[2]:.1f}%")
-        table_data.append(func_equiv_row)
-
-        # Row 3: Variables (exact)
-        var_exact_row = ["Variables Exact"]
-        for row in table_data_raw:
-            var_exact_row.append(f"{row[3]:.1f}%")
-        table_data.append(var_exact_row)
-
-        # Row 4: Variables (semantic)
-        var_equiv_row = ["Variables Semantic"]
-        for row in table_data_raw:
-            var_equiv_row.append(f"{row[4]:.1f}%")
-        table_data.append(var_equiv_row)
-
-        # Row 5: Overall Exact Match
+        # Row 2: Overall Exact Match
         exact_row = ["Overall Exact"]
         for row in table_data_raw:
             exact_row.append(f"{row[5]:.1f}%")
         table_data.append(exact_row)
 
-        # Row 6: Overall Semantic Match
-        equiv_row = ["Overall Semantic"]
+        # Row 3: Functions (semantic)
+        func_equiv_row = ["Functions Semantic"]
         for row in table_data_raw:
-            equiv_row.append(f"{row[6]:.1f}%")
-        table_data.append(equiv_row)
+            func_equiv_row.append(f"{row[2]:.1f}%")
+        table_data.append(func_equiv_row)
+
+        # Row 4: Functions (exact)
+        func_exact_row = ["Functions Exact"]
+        for row in table_data_raw:
+            func_exact_row.append(f"{row[1]:.1f}%")
+        table_data.append(func_exact_row)
+
+        # Row 5: Variables (semantic)
+        var_equiv_row = ["Variables Semantic"]
+        for row in table_data_raw:
+            var_equiv_row.append(f"{row[4]:.1f}%")
+        table_data.append(var_equiv_row)
+
+        # Row 6: Variables (exact)
+        var_exact_row = ["Variables Exact"]
+        for row in table_data_raw:
+            var_exact_row.append(f"{row[3]:.1f}%")
+        table_data.append(var_exact_row)
 
         headers = ["Match"] + tool_names
         print(tabulate(table_data, headers=headers, tablefmt="simple"))
