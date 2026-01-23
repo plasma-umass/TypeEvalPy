@@ -89,7 +89,7 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'missing_variables': 0,
         # TypeSim scores (computed over ALL ground truth entries)
         'typesim_total': 0.0,  # Sum of all TypeSim scores (missing = 0)
-        'typesim_perfect': 0,   # TypeSim == 1.0
+        'typesim_perfect': 0,   # Exact Match
         'typesim_functions_total': 0.0,
         'typesim_variables_total': 0.0,
         'typesim_perfect_functions': 0,
@@ -169,7 +169,7 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
                 elif is_variable:
                     stats['typesim_variables_total'] += typesim_score
 
-                # Track TypeSim == 1.0 for functions/variables
+                # Track Exact Match for functions/variables
                 if typesim_score == 1.0:
                     if is_function:
                         stats['typesim_perfect_functions'] += 1
@@ -289,7 +289,7 @@ def main():
             if total > 0:
                 avg_typesim = stats['typesim_total'] / total * 100  # As percentage
                 detail_data.append(["TypeSim", "", f"{avg_typesim:.2f}%"])
-                detail_data.append(["TypeSim == 1.0", f"{stats['typesim_perfect']}/{total}", f"{stats['typesim_perfect']/total*100:.2f}%"])
+                detail_data.append(["Exact Match", f"{stats['typesim_perfect']}/{total}", f"{stats['typesim_perfect']/total*100:.2f}%"])
 
             detail_data.append(["TypeEvalPy Exact", f"{stats['exact']}/{total}", f"{stats['exact']/total*100:.2f}%"])
 
@@ -362,11 +362,11 @@ def main():
             coverage_funcs_pct,                                                 # 8: functions coverage percentage
             coverage_vars_pct,                                                  # 9: variables coverage percentage
             typesim_avg_pct,                                                    # 10: average TypeSim as percentage
-            typesim_perfect_pct,                                                # 11: TypeSim == 1.0
+            typesim_perfect_pct,                                                # 11: Exact Match
             typesim_funcs_avg_pct,                                              # 12: functions TypeSim avg as percentage
             typesim_vars_avg_pct,                                               # 13: variables TypeSim avg as percentage
-            typesim_perfect_funcs_pct,                                          # 14: TypeSim == 1.0 for functions
-            typesim_perfect_vars_pct,                                           # 15: TypeSim == 1.0 for variables
+            typesim_perfect_funcs_pct,                                          # 14: Exact Match for functions
+            typesim_perfect_vars_pct,                                           # 15: Exact Match for variables
         ]
         table_data_raw.append(row)
 
@@ -395,7 +395,7 @@ def main():
         num_tools = len(table_data_raw)
         # c for category column, l for metric, then r for each tool
         col_spec = "c l@{\\hspace{4em}}" + " r" * num_tools
-        print("begin{table*}")
+        print("\\begin{table*}")
         print(f"% Requires: \\usepackage{{multirow}}, \\usepackage{{graphicx}}")
         print(f"\\begin{{tabular}}{{{col_spec}}}")
         print(r"\toprule")
@@ -406,7 +406,7 @@ def main():
         print(header)
         print(r"\midrule")
 
-        # Overall section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        # Overall section (3 rows: TypeSim, Exact Match, Coverage)
         # Row 1: TypeSim
         typesim_values = []
         for row in table_data_raw:
@@ -415,13 +415,13 @@ def main():
             typesim_values.append(f"{typesim_macro}{{{typesim_pct:.1f}}}")
         print(r"\multirow{3}{*}{\rotatebox{90}{\scriptsize overall}} & TypeSim & " + " & ".join(typesim_values) + r" \\")
 
-        # Row 2: TypeSim == 1.0
+        # Row 2: Exact Match
         typesim_perfect_values = []
         for row in table_data_raw:
             typesim_perfect_pct = row[11]
             typesim_perfect_macro = r"\PCT" if typesim_perfect_pct == max_typesim_perfect else r"\pct"
             typesim_perfect_values.append(f"{typesim_perfect_macro}{{{typesim_perfect_pct:.1f}}}")
-        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_values) + r" \\")
+        print(r"& Exact Match & " + " & ".join(typesim_perfect_values) + r" \\")
 
         # Row 3: Coverage
         coverage_values = []
@@ -432,7 +432,7 @@ def main():
         print(r"& Coverage & " + " & ".join(coverage_values) + r" \\")
         print(r"\midrule")
 
-        # Functions section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        # Functions section (3 rows: TypeSim, Exact Match, Coverage)
         typesim_funcs_values = []
         for row in table_data_raw:
             typesim_funcs_pct = row[12]
@@ -445,7 +445,7 @@ def main():
             typesim_perfect_funcs_pct = row[14]
             func_macro = r"\PCT" if typesim_perfect_funcs_pct == max_typesim_perfect_funcs else r"\pct"
             typesim_perfect_funcs_values.append(f"{func_macro}{{{typesim_perfect_funcs_pct:.1f}}}")
-        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_funcs_values) + r" \\")
+        print(r"& Exact Match & " + " & ".join(typesim_perfect_funcs_values) + r" \\")
 
         func_coverage_values = []
         for row in table_data_raw:
@@ -455,7 +455,7 @@ def main():
         print(r"& Coverage & " + " & ".join(func_coverage_values) + r" \\")
         print(r"\midrule")
 
-        # Variables section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        # Variables section (3 rows: TypeSim, Exact Match, Coverage)
         typesim_vars_values = []
         for row in table_data_raw:
             typesim_vars_pct = row[13]
@@ -468,7 +468,7 @@ def main():
             typesim_perfect_vars_pct = row[15]
             var_macro = r"\PCT" if typesim_perfect_vars_pct == max_typesim_perfect_vars else r"\pct"
             typesim_perfect_vars_values.append(f"{var_macro}{{{typesim_perfect_vars_pct:.1f}}}")
-        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_vars_values) + r" \\")
+        print(r"& Exact Match & " + " & ".join(typesim_perfect_vars_values) + r" \\")
 
         var_coverage_values = []
         for row in table_data_raw:
@@ -489,7 +489,7 @@ def main():
             print(f"\\\\[0.5em]")
             print(f"\\small Results on {total} type annotations ({total_funcs} functions, {total_vars} variables).")
 
-        print("end{table*}")
+        print("\\end{table*}")
     else:
         # Normal tabulate output - transposed (metrics as rows, tools as columns)
         # Row indices:
@@ -512,8 +512,8 @@ def main():
             typesim_row.append(f"{row[10]:.1f}%")
         table_data.append(typesim_row)
 
-        # TypeSim == 1.0
-        typesim_perfect_row = ["TypeSim == 1.0"]
+        # Exact Match
+        typesim_perfect_row = ["Exact Match"]
         for row in table_data_raw:
             typesim_perfect_row.append(f"{row[11]:.1f}%")
         table_data.append(typesim_perfect_row)
