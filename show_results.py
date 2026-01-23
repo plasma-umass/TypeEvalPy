@@ -394,7 +394,8 @@ def main():
         # Requires: \usepackage{multirow}, \usepackage{graphicx}
         num_tools = len(table_data_raw)
         # c for category column, l for metric, then r for each tool
-        col_spec = "c l@{\\hspace{6em}}" + " r" * num_tools
+        col_spec = "c l@{\\hspace{4em}}" + " r" * num_tools
+        print("begin{table*}")
         print(f"% Requires: \\usepackage{{multirow}}, \\usepackage{{graphicx}}")
         print(f"\\begin{{tabular}}{{{col_spec}}}")
         print(r"\toprule")
@@ -487,6 +488,8 @@ def main():
             total = int(table_data_raw[0][6])
             print(f"\\\\[0.5em]")
             print(f"\\small Results on {total} type annotations ({total_funcs} functions, {total_vars} variables).")
+
+        print("end{table*}")
     else:
         # Normal tabulate output - transposed (metrics as rows, tools as columns)
         # Row indices:
