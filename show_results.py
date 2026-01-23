@@ -1,70 +1,56 @@
 #!/usr/bin/env python3
 """
-Type comparison with semantic equivalence.
-Accepts types that are functionally equivalent (can be used interchangeably).
+Type comparison using TypeSim for semantic similarity scoring.
 """
 
 import json
+import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List
 from tabulate import tabulate
 
+# Import TypeSim from sibling directory
+sys.path.insert(0, str(Path(__file__).parent.parent / "righttyper-eval" / "src"))
+from typesim2 import get_type_similarity
 
-# Type equivalence rules - types that are functionally interchangeable
-# For non-builtins, requires qualified names (e.g., itertools.count, not just count)
-# This is for functional equivalence (e.g., zip is-a iterator), NOT case variations
-# (case variations should be handled by each runner's normalizer)
-TYPE_EQUIVALENCES = {
-    # Builtin iterator types - all are iterators
-    # Note: these are builtins, so no qualification needed
-    'zip': {'iterator', 'zip'},
-    'map': {'iterator', 'map'},
-    'filter': {'iterator', 'filter'},
-    'enumerate': {'iterator', 'enumerate'},
-    'range': {'iterator', 'range'},
-    'reversed': {'iterator', 'reversed'},
 
-    # itertools types - require full qualification (itertools.*)
-    # Only the qualified version is equivalent to iterator
-    'itertools.chain': {'iterator', 'itertools.chain'},
-    'itertools.compress': {'iterator', 'itertools.compress'},
-    'itertools.count': {'iterator', 'itertools.count'},
-    'itertools.cycle': {'iterator', 'itertools.cycle'},
-    'itertools.permutations': {'iterator', 'itertools.permutations'},
-    'itertools.combinations': {'iterator', 'itertools.combinations'},
-    'itertools.product': {'iterator', 'itertools.product'},
-    'itertools.repeat': {'iterator', 'itertools.repeat'},
-    'itertools.groupby': {'iterator', 'itertools.groupby'},
-    'itertools._grouper': {'iterator', 'itertools._grouper'},
-
-    # Iterator itself (and all types that are iterators)
-    'iterator': {'iterator', 'zip', 'map', 'filter', 'enumerate', 'range', 'reversed',
-                 'itertools.chain', 'itertools.compress', 'itertools.count', 'itertools.cycle',
-                 'itertools.permutations', 'itertools.combinations', 'itertools.product',
-                 'itertools.repeat', 'itertools.groupby', 'itertools._grouper', 'generator'},
-
-    # Generator is also an iterator
-    'generator': {'iterator', 'generator'},
+# Reverse mapping for TypeEvalPy's type normalizations
+# Original _NAME_MAP in type_normalizer.py strips qualifications; we restore them
+TYPEEVALPY_DENORMALIZE = {
+    # Callable (was typing.Callable or collections.abc.Callable)
+    'callable': 'typing.Callable',
+    # Iterator (was typing.Iterator or collections.abc.Iterator)
+    'iterator': 'typing.Iterator',
+    # Generator (was typing.Generator or collections.abc.Generator)
+    'generator': 'typing.Generator',
+    # Code (was types.CodeType)
+    'code': 'types.CodeType',
+    # None (was None, normalized to Nonetype)
+    'Nonetype': 'None',
+    # Note: 'type' is kept as-is - it's the builtin metaclass, not typing.Type
 }
 
 
-def get_equivalent_types(type_str: str) -> Set[str]:
+def normalize_type_for_typesim(type_str: str) -> str:
     """
-    Get all types equivalent to the given type.
-    Returns a set including the type itself and all its equivalents.
-    Only considers exact functional equivalence (case variations, etc).
+    Reverse TypeEvalPy's type normalizations before passing to TypeSim.
+
+    TypeEvalPy's type_normalizer.py strips module qualifications and lowercases
+    some types. We restore them for proper TypeSim comparison.
     """
-    # Start with the type itself
-    equiv_set = {type_str}
+    return TYPEEVALPY_DENORMALIZE.get(type_str, type_str)
 
-    # Check if this type has defined equivalences (case-insensitive lookup)
-    type_lower = type_str.lower()
-    for key, values in TYPE_EQUIVALENCES.items():
-        if key.lower() == type_lower:
-            equiv_set.update(values)
-            break
 
-    return equiv_set
+def types_to_annotation(types: List[str]) -> str:
+    """Convert a list of types to a single annotation string for TypeSim."""
+    if not types:
+        return ""
+    # Normalize each type
+    normalized = [normalize_type_for_typesim(t) for t in types]
+    if len(normalized) == 1:
+        return normalized[0]
+    # Multiple types -> union
+    return " | ".join(sorted(normalized))
 
 
 def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
@@ -72,71 +58,14 @@ def compare_types(gt_types: List[str], pred_types: List[str]) -> dict:
     Compare ground truth and predicted types.
 
     Returns a dict with keys:
-    - exact: True if exact match
-    - equivalence: True if semantically equivalent (same functionality)
-    - incomplete: True if predictions are correct but missing some GT types
-
-    For union types (multiple types), ALL types must match, not just some.
-    E.g., GT=['str', 'int'] requires pred to cover both str and int.
+    - exact: True if exact string match
     """
     gt_set = set(gt_types)
     pred_set = set(pred_types)
 
     result = {
-        'exact': False,
-        'equivalence': False,
-        'incomplete': False,
+        'exact': gt_set == pred_set,
     }
-
-    # 1. Exact match
-    if gt_set == pred_set:
-        result['exact'] = True
-        result['equivalence'] = True
-        return result
-
-    # 2. Semantic equivalence
-    # For equivalence, check both directions:
-    # - All GT types must be covered by predictions (via equivalence)
-    # - All prediction types must be covered by GT (via equivalence)
-    # This prevents partial matches like GT=['str', 'int'] matching pred=['str']
-
-    # Check: all GT types covered by predictions?
-    all_gt_covered = True
-    for gt_type in gt_types:
-        gt_equiv = get_equivalent_types(gt_type)
-        if not (pred_set & gt_equiv):  # No intersection
-            all_gt_covered = False
-            break
-
-    # Check: all prediction types covered by GT?
-    all_pred_covered = True
-    for pred_type in pred_types:
-        pred_equiv = get_equivalent_types(pred_type)
-        if not (gt_set & pred_equiv):  # No intersection
-            all_pred_covered = False
-            break
-
-    if all_gt_covered and all_pred_covered:
-        result['equivalence'] = True
-        return result
-
-    # 3. Incomplete match
-    # Predictions have some correct types but are incomplete (under-prediction only).
-    # NO incorrect types are allowed - all pred types must be valid.
-    # This means: all pred types covered by GT, but not all GT types covered by pred.
-
-    # First, verify all prediction types are correct (covered by GT)
-    all_pred_covered_by_gt = True
-    for pred_type in pred_types:
-        pred_equiv = get_equivalent_types(pred_type)
-        if not (gt_set & pred_equiv):  # No intersection with GT
-            all_pred_covered_by_gt = False
-            break
-
-    # Only check for incomplete if all predictions are correct
-    if all_pred_covered_by_gt and not all_gt_covered:
-        # All predictions are correct, but some GT types are missing
-        result['incomplete'] = True
 
     return result
 
@@ -155,14 +84,19 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'exact_variables': 0,   # Variables
         'total_functions': 0,
         'total_variables': 0,
-        'equivalence': 0,
-        'equivalence_functions': 0,  # Semantic equivalence for functions
-        'equivalence_variables': 0,  # Semantic equivalence for variables
-        'incomplete': 0,
         'missing': 0,
+        'missing_functions': 0,
+        'missing_variables': 0,
+        # TypeSim scores (computed over ALL ground truth entries)
+        'typesim_total': 0.0,  # Sum of all TypeSim scores (missing = 0)
+        'typesim_perfect': 0,   # TypeSim == 1.0
+        'typesim_functions_total': 0.0,
+        'typesim_variables_total': 0.0,
+        'typesim_perfect_functions': 0,
+        'typesim_perfect_variables': 0,
         'examples': {
-            'equivalence_only': [],
-            'incomplete': [],
+            'typesim_partial': [],  # Examples where TypeSim gave partial credit
+            'typesim_zero': [],     # Examples where TypeSim == 0 (complete mismatch)
         }
     }
 
@@ -203,55 +137,76 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
 
             if key not in result_lookup:
                 stats['missing'] += 1
+                if is_function:
+                    stats['missing_functions'] += 1
+                elif is_variable:
+                    stats['missing_variables'] += 1
+                # Missing prediction = TypeSim score of 0 (already 0, nothing to add)
                 continue
 
             pred_types = result_lookup[key]
             comparison = compare_types(gt_types, pred_types)
 
+            # Compute TypeSim score (over ALL ground truth entries)
+            if gt_types:
+                if pred_types:
+                    gt_annotation = types_to_annotation(gt_types)
+                    pred_annotation = types_to_annotation(pred_types)
+                    try:
+                        typesim_score = get_type_similarity(gt_annotation, pred_annotation)
+                    except Exception:
+                        typesim_score = 0.0
+                else:
+                    typesim_score = 0.0  # No prediction = 0 score
+
+                stats['typesim_total'] += typesim_score
+
+                if typesim_score == 1.0:
+                    stats['typesim_perfect'] += 1
+
+                if is_function:
+                    stats['typesim_functions_total'] += typesim_score
+                elif is_variable:
+                    stats['typesim_variables_total'] += typesim_score
+
+                # Track TypeSim == 1.0 for functions/variables
+                if typesim_score == 1.0:
+                    if is_function:
+                        stats['typesim_perfect_functions'] += 1
+                    elif is_variable:
+                        stats['typesim_perfect_variables'] += 1
+
+                # Save examples where TypeSim gives partial credit but not exact
+                if 0 < typesim_score < 1.0 and not comparison['exact']:
+                    example = {
+                        'file': str(gt_file.relative_to(tool_dir)),
+                        'line': gt_item['line_number'],
+                        'gt': gt_types,
+                        'pred': pred_types,
+                        'score': typesim_score
+                    }
+                    if len(stats['examples']['typesim_partial']) < 5:
+                        stats['examples']['typesim_partial'].append(example)
+
+                # Save examples where TypeSim == 0 (complete mismatch)
+                if typesim_score == 0.0:
+                    example = {
+                        'file': str(gt_file.relative_to(tool_dir)),
+                        'line': gt_item['line_number'],
+                        'gt': gt_types,
+                        'pred': pred_types,
+                    }
+                    if len(stats['examples']['typesim_zero']) < 5:
+                        stats['examples']['typesim_zero'].append(example)
+
             if comparison['exact']:
                 stats['exact'] += 1
-                stats['equivalence'] += 1
 
                 # Track category-specific exact matches
                 if is_function:
                     stats['exact_functions'] += 1
-                    stats['equivalence_functions'] += 1
                 elif is_variable:
                     stats['exact_variables'] += 1
-                    stats['equivalence_variables'] += 1
-
-            elif comparison['equivalence']:
-                stats['equivalence'] += 1
-
-                # Track category-specific semantic equivalence
-                if is_function:
-                    stats['equivalence_functions'] += 1
-                elif is_variable:
-                    stats['equivalence_variables'] += 1
-
-                # Save example
-                example = {
-                    'file': str(gt_file.relative_to(tool_dir)),
-                    'line': gt_item['line_number'],
-                    'gt': gt_types,
-                    'pred': pred_types
-                }
-
-                if len(stats['examples']['equivalence_only']) < 5:
-                    stats['examples']['equivalence_only'].append(example)
-            elif comparison['incomplete']:
-                stats['incomplete'] += 1
-
-                # Save example
-                example = {
-                    'file': str(gt_file.relative_to(tool_dir)),
-                    'line': gt_item['line_number'],
-                    'gt': gt_types,
-                    'pred': pred_types
-                }
-
-                if len(stats['examples']['incomplete']) < 5:
-                    stats['examples']['incomplete'].append(example)
 
     return stats
 
@@ -266,7 +221,7 @@ def main():
 
     if not args.latex:
         print("\n" + "="*80)
-        print("Type Comparison with Semantic Equivalence")
+        print("Type Comparison Results")
         print("="*80)
 
     # Automatically discover latest run for each tool
@@ -319,30 +274,36 @@ def main():
 
             print(f"\n{tool_labels.get(tool, tool.upper())}")
             print("-" * 80)
-            print(f"Total facts: {stats['total']}")
+            coverage = (stats['total'] - stats['missing']) / stats['total'] * 100 if stats['total'] > 0 else 0
+            print(f"Total facts: {stats['total']}, Coverage: {coverage:.1f}%")
             print(f"Missing predictions: {stats['missing']}")
-            print(f"Incomplete matches: {stats['incomplete']}")
             print()
 
             # Always use total facts as denominator for fair comparison
             total = stats['total']
 
             # Build detail table
-            detail_data = [
-                ["Exact match", f"{stats['exact']}/{total}", f"{stats['exact']/total*100:.2f}%", ""],
-                ["+ Semantic equiv", f"{stats['equivalence']}/{total}", f"{stats['equivalence']/total*100:.2f}%", f"+{stats['equivalence'] - stats['exact']}"],
-            ]
-            print(tabulate(detail_data, headers=["Comparison", "Correct", "Accuracy", "Gain"], tablefmt="simple"))
+            detail_data = []
+
+            # Add TypeSim rows (computed over all ground truth entries)
+            if total > 0:
+                avg_typesim = stats['typesim_total'] / total * 100  # As percentage
+                detail_data.append(["TypeSim", "", f"{avg_typesim:.2f}%"])
+                detail_data.append(["TypeSim == 1.0", f"{stats['typesim_perfect']}/{total}", f"{stats['typesim_perfect']/total*100:.2f}%"])
+
+            detail_data.append(["TypeEvalPy Exact", f"{stats['exact']}/{total}", f"{stats['exact']/total*100:.2f}%"])
+
+            print(tabulate(detail_data, headers=["Metric", "Count", "Percentage"], tablefmt="simple"))
 
             # Show examples
-            if stats['examples']['equivalence_only']:
-                print("\n  Examples fixed by semantic equivalence (same functionality):")
-                for ex in stats['examples']['equivalence_only']:
-                    print(f"    {ex['file']}:{ex['line']}  {ex['gt']} -> {ex['pred']}")
+            if stats['examples']['typesim_partial']:
+                print("\n  Examples where TypeSim gave partial credit (0 < score < 1.0):")
+                for ex in stats['examples']['typesim_partial']:
+                    print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}  (score: {ex['score']:.2f})")
 
-            if stats['examples']['incomplete']:
-                print("\n  Examples of incomplete matches (correct but missing types):")
-                for ex in stats['examples']['incomplete']:
+            if stats['examples']['typesim_zero']:
+                print("\n  Examples where TypeSim == 0 (complete mismatch):")
+                for ex in stats['examples']['typesim_zero']:
                     print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
 
     # Summary
@@ -352,8 +313,14 @@ def main():
         print("="*80)
 
     # Build table data with raw values
-    # (tool_label, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct,
-    #  exact_pct, equiv_pct, total_funcs, total_vars, total)
+    # Row structure:
+    # [0] tool_label
+    # [1] exact_funcs_pct, [2] exact_vars_pct, [3] exact_pct
+    # [4] total_funcs, [5] total_vars, [6] total
+    # [7] coverage_pct, [8] coverage_funcs_pct, [9] coverage_vars_pct
+    # [10] typesim_avg_pct, [11] typesim_perfect_pct
+    # [12] typesim_funcs_avg_pct, [13] typesim_vars_avg_pct
+    # [14] typesim_perfect_funcs_pct, [15] typesim_perfect_vars_pct
     table_data_raw = []
     for tool in tool_order:
         run = latest_runs[tool]
@@ -370,33 +337,57 @@ def main():
         total_funcs = stats['total_functions']
         total_vars = stats['total_variables']
 
+        # Coverage (percentage of GT items with predictions)
+        coverage_pct = (total - stats['missing']) / total * 100 if total > 0 else 0
+        coverage_funcs_pct = (total_funcs - stats['missing_functions']) / total_funcs * 100 if total_funcs > 0 else 0
+        coverage_vars_pct = (total_vars - stats['missing_variables']) / total_vars * 100 if total_vars > 0 else 0
+
+        # TypeSim stats (computed over ALL ground truth entries, as percentages)
+        typesim_avg_pct = stats['typesim_total'] / total * 100 if total > 0 else 0
+        typesim_perfect_pct = stats['typesim_perfect'] / total * 100 if total > 0 else 0
+        typesim_funcs_avg_pct = stats['typesim_functions_total'] / total_funcs * 100 if total_funcs > 0 else 0
+        typesim_vars_avg_pct = stats['typesim_variables_total'] / total_vars * 100 if total_vars > 0 else 0
+        typesim_perfect_funcs_pct = stats['typesim_perfect_functions'] / total_funcs * 100 if total_funcs > 0 else 0
+        typesim_perfect_vars_pct = stats['typesim_perfect_variables'] / total_vars * 100 if total_vars > 0 else 0
+
         row = [
-            tool_labels.get(tool, tool),
-            stats['exact_functions']/total_funcs*100 if total_funcs > 0 else 0,       # exact functions percentage
-            stats['equivalence_functions']/total_funcs*100 if total_funcs > 0 else 0, # equiv functions percentage
-            stats['exact_variables']/total_vars*100 if total_vars > 0 else 0,         # exact variables percentage
-            stats['equivalence_variables']/total_vars*100 if total_vars > 0 else 0,   # equiv variables percentage
-            stats['exact']/total*100,                  # total exact percentage
-            stats['equivalence']/total*100,            # equiv percentage
-            total_funcs,
-            total_vars,
-            total,
+            tool_labels.get(tool, tool),                                        # 0: tool label
+            stats['exact_functions']/total_funcs*100 if total_funcs > 0 else 0, # 1: exact functions percentage
+            stats['exact_variables']/total_vars*100 if total_vars > 0 else 0,   # 2: exact variables percentage
+            stats['exact']/total*100,                                           # 3: total exact percentage
+            total_funcs,                                                        # 4
+            total_vars,                                                         # 5
+            total,                                                              # 6
+            coverage_pct,                                                       # 7: overall coverage percentage
+            coverage_funcs_pct,                                                 # 8: functions coverage percentage
+            coverage_vars_pct,                                                  # 9: variables coverage percentage
+            typesim_avg_pct,                                                    # 10: average TypeSim as percentage
+            typesim_perfect_pct,                                                # 11: TypeSim == 1.0
+            typesim_funcs_avg_pct,                                              # 12: functions TypeSim avg as percentage
+            typesim_vars_avg_pct,                                               # 13: variables TypeSim avg as percentage
+            typesim_perfect_funcs_pct,                                          # 14: TypeSim == 1.0 for functions
+            typesim_perfect_vars_pct,                                           # 15: TypeSim == 1.0 for variables
         ]
         table_data_raw.append(row)
 
-    # Sort by Total Semantic (equiv_pct, row[6]) in ascending order
-    table_data_raw.sort(key=lambda row: row[6], reverse=False)
+    # Sort by TypeSim average (row[10]) in ascending order
+    table_data_raw.sort(key=lambda row: row[10], reverse=False)
 
-    # Find max values in each percentage column
+    # Find max values in each percentage column (for LaTeX bolding)
     if table_data_raw:
-        max_exact_funcs = max(row[1] for row in table_data_raw)
-        max_equiv_funcs = max(row[2] for row in table_data_raw)
-        max_exact_vars = max(row[3] for row in table_data_raw)
-        max_equiv_vars = max(row[4] for row in table_data_raw)
-        max_exact = max(row[5] for row in table_data_raw)
-        max_equiv = max(row[6] for row in table_data_raw)
+        max_coverage = max(row[7] for row in table_data_raw)
+        max_coverage_funcs = max(row[8] for row in table_data_raw)
+        max_coverage_vars = max(row[9] for row in table_data_raw)
+        max_typesim = max(row[10] for row in table_data_raw)
+        max_typesim_perfect = max(row[11] for row in table_data_raw)
+        max_typesim_funcs = max(row[12] for row in table_data_raw)
+        max_typesim_vars = max(row[13] for row in table_data_raw)
+        max_typesim_perfect_funcs = max(row[14] for row in table_data_raw)
+        max_typesim_perfect_vars = max(row[15] for row in table_data_raw)
     else:
-        max_exact_funcs = max_equiv_funcs = max_exact_vars = max_equiv_vars = max_exact = max_equiv = 0
+        max_coverage = max_coverage_funcs = max_coverage_vars = 0
+        max_typesim = max_typesim_perfect = max_typesim_funcs = max_typesim_vars = 0
+        max_typesim_perfect_funcs = max_typesim_perfect_vars = 0
 
     if args.latex:
         # LaTeX output - transposed with vertical category labels using multirow/rotatebox
@@ -408,118 +399,179 @@ def main():
         print(f"\\begin{{tabular}}{{{col_spec}}}")
         print(r"\toprule")
 
-        # Header: & Match & Tool1 & Tool2 & ... \\
+        # Header: & Metric & Tool1 & Tool2 & ... \\
         tool_names = [row[0] for row in table_data_raw]
-        header = "& Match & " + " & ".join(tool_names) + r" \\"
+        header = "& Metric & " + " & ".join(tool_names) + r" \\"
         print(header)
         print(r"\midrule")
 
-        # Overall section (2 rows: Semantic, Exact)
-        # Row 1: Overall Semantic Match
-        equiv_values = []
+        # Overall section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        # Row 1: TypeSim
+        typesim_values = []
         for row in table_data_raw:
-            equiv_pct = row[6]
-            equiv_macro = r"\PCT" if equiv_pct == max_equiv else r"\pct"
-            equiv_values.append(f"{equiv_macro}{{{equiv_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize overall}} & Semantic & " + " & ".join(equiv_values) + r" \\")
+            typesim_pct = row[10]
+            typesim_macro = r"\PCT" if typesim_pct == max_typesim else r"\pct"
+            typesim_values.append(f"{typesim_macro}{{{typesim_pct:.1f}}}")
+        print(r"\multirow{3}{*}{\rotatebox{90}{\scriptsize overall}} & TypeSim & " + " & ".join(typesim_values) + r" \\")
 
-        # Row 2: Overall Exact Match
-        exact_values = []
+        # Row 2: TypeSim == 1.0
+        typesim_perfect_values = []
         for row in table_data_raw:
-            exact_pct = row[5]
-            exact_macro = r"\PCT" if exact_pct == max_exact else r"\pct"
-            exact_values.append(f"{exact_macro}{{{exact_pct:.1f}}}")
-        print("& Exact & " + " & ".join(exact_values) + r" \\")
+            typesim_perfect_pct = row[11]
+            typesim_perfect_macro = r"\PCT" if typesim_perfect_pct == max_typesim_perfect else r"\pct"
+            typesim_perfect_values.append(f"{typesim_perfect_macro}{{{typesim_perfect_pct:.1f}}}")
+        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_values) + r" \\")
+
+        # Row 3: Coverage
+        coverage_values = []
+        for row in table_data_raw:
+            coverage_pct = row[7]
+            coverage_macro = r"\PCT" if coverage_pct == max_coverage else r"\pct"
+            coverage_values.append(f"{coverage_macro}{{{coverage_pct:.1f}}}")
+        print(r"& Coverage & " + " & ".join(coverage_values) + r" \\")
         print(r"\midrule")
 
-        # Functions section (2 rows: Semantic, Exact)
-        func_equiv_values = []
+        # Functions section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        typesim_funcs_values = []
         for row in table_data_raw:
-            equiv_funcs_pct = row[2]
-            func_equiv_macro = r"\PCT" if equiv_funcs_pct == max_equiv_funcs else r"\pct"
-            func_equiv_values.append(f"{func_equiv_macro}{{{equiv_funcs_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize funcs.}} & Semantic & " + " & ".join(func_equiv_values) + r" \\")
+            typesim_funcs_pct = row[12]
+            typesim_funcs_macro = r"\PCT" if typesim_funcs_pct == max_typesim_funcs else r"\pct"
+            typesim_funcs_values.append(f"{typesim_funcs_macro}{{{typesim_funcs_pct:.1f}}}")
+        print(r"\multirow{3}{*}{\rotatebox{90}{\scriptsize funcs.}} & TypeSim & " + " & ".join(typesim_funcs_values) + r" \\")
 
-        func_exact_values = []
+        typesim_perfect_funcs_values = []
         for row in table_data_raw:
-            exact_funcs_pct = row[1]
-            func_macro = r"\PCT" if exact_funcs_pct == max_exact_funcs else r"\pct"
-            func_exact_values.append(f"{func_macro}{{{exact_funcs_pct:.1f}}}")
-        print("& Exact & " + " & ".join(func_exact_values) + r" \\")
+            typesim_perfect_funcs_pct = row[14]
+            func_macro = r"\PCT" if typesim_perfect_funcs_pct == max_typesim_perfect_funcs else r"\pct"
+            typesim_perfect_funcs_values.append(f"{func_macro}{{{typesim_perfect_funcs_pct:.1f}}}")
+        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_funcs_values) + r" \\")
+
+        func_coverage_values = []
+        for row in table_data_raw:
+            coverage_funcs_pct = row[8]
+            func_coverage_macro = r"\PCT" if coverage_funcs_pct == max_coverage_funcs else r"\pct"
+            func_coverage_values.append(f"{func_coverage_macro}{{{coverage_funcs_pct:.1f}}}")
+        print(r"& Coverage & " + " & ".join(func_coverage_values) + r" \\")
         print(r"\midrule")
 
-        # Variables section (2 rows: Semantic, Exact)
-        var_equiv_values = []
+        # Variables section (3 rows: TypeSim, TypeSim == 1.0, Coverage)
+        typesim_vars_values = []
         for row in table_data_raw:
-            equiv_vars_pct = row[4]
-            var_equiv_macro = r"\PCT" if equiv_vars_pct == max_equiv_vars else r"\pct"
-            var_equiv_values.append(f"{var_equiv_macro}{{{equiv_vars_pct:.1f}}}")
-        print(r"\multirow{2}{*}{\rotatebox{90}{\scriptsize vars.}} & Semantic & " + " & ".join(var_equiv_values) + r" \\")
+            typesim_vars_pct = row[13]
+            typesim_vars_macro = r"\PCT" if typesim_vars_pct == max_typesim_vars else r"\pct"
+            typesim_vars_values.append(f"{typesim_vars_macro}{{{typesim_vars_pct:.1f}}}")
+        print(r"\multirow{3}{*}{\rotatebox{90}{\scriptsize vars.}} & TypeSim & " + " & ".join(typesim_vars_values) + r" \\")
 
-        var_exact_values = []
+        typesim_perfect_vars_values = []
         for row in table_data_raw:
-            exact_vars_pct = row[3]
-            var_macro = r"\PCT" if exact_vars_pct == max_exact_vars else r"\pct"
-            var_exact_values.append(f"{var_macro}{{{exact_vars_pct:.1f}}}")
-        print("& Exact & " + " & ".join(var_exact_values) + r" \\")
+            typesim_perfect_vars_pct = row[15]
+            var_macro = r"\PCT" if typesim_perfect_vars_pct == max_typesim_perfect_vars else r"\pct"
+            typesim_perfect_vars_values.append(f"{var_macro}{{{typesim_perfect_vars_pct:.1f}}}")
+        print(r"& TypeSim == 1.0 & " + " & ".join(typesim_perfect_vars_values) + r" \\")
+
+        var_coverage_values = []
+        for row in table_data_raw:
+            coverage_vars_pct = row[9]
+            var_coverage_macro = r"\PCT" if coverage_vars_pct == max_coverage_vars else r"\pct"
+            var_coverage_values.append(f"{var_coverage_macro}{{{coverage_vars_pct:.1f}}}")
+        print(r"& Coverage & " + " & ".join(var_coverage_values) + r" \\")
 
         print(r"\bottomrule")
         print(r"\end{tabular}")
 
         # Add note with totals
         # Get totals from first row (all rows have same totals)
-        # row structure: [tool, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct, exact_pct, equiv_pct, total_funcs, total_vars, total]
         if table_data_raw:
-            total_funcs = table_data_raw[0][7]
-            total_vars = table_data_raw[0][8]
-            total = table_data_raw[0][9]
+            total_funcs = int(table_data_raw[0][4])
+            total_vars = int(table_data_raw[0][5])
+            total = int(table_data_raw[0][6])
             print(f"\\\\[0.5em]")
             print(f"\\small Results on {total} type annotations ({total_funcs} functions, {total_vars} variables).")
     else:
         # Normal tabulate output - transposed (metrics as rows, tools as columns)
-        # row structure: [tool, exact_funcs_pct, equiv_funcs_pct, exact_vars_pct, equiv_vars_pct, exact_pct, equiv_pct, total_funcs, total_vars, total]
+        # Row indices:
+        # [0] tool_label
+        # [1] exact_funcs_pct, [2] exact_vars_pct, [3] exact_pct
+        # [4] total_funcs, [5] total_vars, [6] total
+        # [7] coverage_pct, [8] coverage_funcs_pct, [9] coverage_vars_pct
+        # [10] typesim_avg_pct, [11] typesim_perfect_pct
+        # [12] typesim_funcs_avg_pct, [13] typesim_vars_avg_pct
+        # [14] typesim_perfect_funcs_pct, [15] typesim_perfect_vars_pct
         tool_names = [row[0] for row in table_data_raw]
 
         # Build transposed table data
         table_data = []
 
-        # Row 1: Overall Semantic Match
-        equiv_row = ["Overall Semantic"]
+        # === OVERALL SECTION ===
+        # TypeSim
+        typesim_row = ["TypeSim"]
         for row in table_data_raw:
-            equiv_row.append(f"{row[6]:.1f}%")
-        table_data.append(equiv_row)
+            typesim_row.append(f"{row[10]:.1f}%")
+        table_data.append(typesim_row)
 
-        # Row 2: Overall Exact Match
-        exact_row = ["Overall Exact"]
+        # TypeSim == 1.0
+        typesim_perfect_row = ["TypeSim == 1.0"]
         for row in table_data_raw:
-            exact_row.append(f"{row[5]:.1f}%")
+            typesim_perfect_row.append(f"{row[11]:.1f}%")
+        table_data.append(typesim_perfect_row)
+
+        # TypeEvalPy Exact
+        exact_row = ["TypeEvalPy Exact"]
+        for row in table_data_raw:
+            exact_row.append(f"{row[3]:.1f}%")
         table_data.append(exact_row)
 
-        # Row 3: Functions (semantic)
-        func_equiv_row = ["Functions Semantic"]
+        # Coverage
+        coverage_row = ["Coverage"]
         for row in table_data_raw:
-            func_equiv_row.append(f"{row[2]:.1f}%")
-        table_data.append(func_equiv_row)
+            coverage_row.append(f"{row[7]:.1f}%")
+        table_data.append(coverage_row)
 
-        # Row 4: Functions (exact)
-        func_exact_row = ["Functions Exact"]
+        # Separator row
+        table_data.append(["---"] + ["---"] * len(tool_names))
+
+        # === FUNCTIONS SECTION ===
+        # TypeSim Funcs
+        typesim_funcs_row = ["TypeSim Funcs"]
+        for row in table_data_raw:
+            typesim_funcs_row.append(f"{row[12]:.1f}%")
+        table_data.append(typesim_funcs_row)
+
+        # TypeEvalPy Funcs Exact
+        func_exact_row = ["TypeEvalPy Funcs"]
         for row in table_data_raw:
             func_exact_row.append(f"{row[1]:.1f}%")
         table_data.append(func_exact_row)
 
-        # Row 5: Variables (semantic)
-        var_equiv_row = ["Variables Semantic"]
+        # Funcs Coverage
+        func_coverage_row = ["Funcs Coverage"]
         for row in table_data_raw:
-            var_equiv_row.append(f"{row[4]:.1f}%")
-        table_data.append(var_equiv_row)
+            func_coverage_row.append(f"{row[8]:.1f}%")
+        table_data.append(func_coverage_row)
 
-        # Row 6: Variables (exact)
-        var_exact_row = ["Variables Exact"]
+        # Separator row
+        table_data.append(["---"] + ["---"] * len(tool_names))
+
+        # === VARIABLES SECTION ===
+        # TypeSim Vars
+        typesim_vars_row = ["TypeSim Vars"]
         for row in table_data_raw:
-            var_exact_row.append(f"{row[3]:.1f}%")
+            typesim_vars_row.append(f"{row[13]:.1f}%")
+        table_data.append(typesim_vars_row)
+
+        # TypeEvalPy Vars Exact
+        var_exact_row = ["TypeEvalPy Vars"]
+        for row in table_data_raw:
+            var_exact_row.append(f"{row[2]:.1f}%")
         table_data.append(var_exact_row)
 
-        headers = ["Match"] + tool_names
+        # Vars Coverage
+        var_coverage_row = ["Vars Coverage"]
+        for row in table_data_raw:
+            var_coverage_row.append(f"{row[9]:.1f}%")
+        table_data.append(var_coverage_row)
+
+        headers = ["Metric"] + tool_names
         print(tabulate(table_data, headers=headers, tablefmt="simple"))
 
 
