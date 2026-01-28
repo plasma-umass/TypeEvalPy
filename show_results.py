@@ -12,7 +12,38 @@ from tabulate import tabulate
 
 # Import TypeSim from sibling directory
 sys.path.insert(0, str(Path(__file__).parent.parent / "righttyper-eval" / "src"))
-from typesim2 import get_type_similarity
+from typesim2 import get_type_similarity, clear_typevar_cache
+from typesim2.resolver import import_type
+
+# Modules that may be defined in benchmark directories
+_BENCHMARK_MODULES = ('main', 'to_import', 'to_import_call', 'to_import_init', 'nest', 'nested')
+
+
+def setup_benchmark_context(benchmark_dir: Path) -> str:
+    """Add benchmark directory to sys.path and clear caches for fresh imports."""
+    path_str = str(benchmark_dir.resolve())
+
+    # Clear TypeSim caches
+    clear_typevar_cache()
+    import_type.cache_clear()
+
+    # Clear any previously imported benchmark modules
+    for m in list(sys.modules.keys()):
+        if m in _BENCHMARK_MODULES or m.startswith(tuple(f'{mod}.' for mod in _BENCHMARK_MODULES)):
+            del sys.modules[m]
+
+    # Add benchmark dir to front of path
+    if path_str in sys.path:
+        sys.path.remove(path_str)
+    sys.path.insert(0, path_str)
+
+    return path_str
+
+
+def cleanup_benchmark_context(path_str: str):
+    """Remove benchmark directory from sys.path."""
+    if path_str in sys.path:
+        sys.path.remove(path_str)
 
 
 # Reverse mapping for TypeEvalPy's type normalizations
@@ -42,12 +73,47 @@ def normalize_type_for_typesim(type_str: str) -> str:
     return TYPEEVALPY_DENORMALIZE.get(type_str, type_str)
 
 
-def types_to_annotation(types: List[str]) -> str:
+def qualify_user_defined_type(type_str: str, benchmark_dir: Path) -> str:
+    """
+    Qualify user-defined types with 'main.' prefix if needed.
+
+    If the first path segment isn't a builtin, importable module, or local
+    module file, assume it's defined in main.py.
+    """
+    import builtins
+    import importlib.util
+
+    if not type_str:
+        return type_str
+
+    first_part = type_str.split('.')[0]
+
+    # Check if it's a builtin type
+    if hasattr(builtins, first_part):
+        return type_str
+
+    # Check if there's a corresponding .py file in the benchmark dir
+    if (benchmark_dir / f'{first_part}.py').exists():
+        return type_str  # It's a local module like to_import.A
+
+    # Check if it's an importable module (e.g., typing, types, collections)
+    if importlib.util.find_spec(first_part) is not None:
+        return type_str
+
+    # Don't prefix _typeshed (stub-only module handled specially by TypeSim)
+    if first_part == '_typeshed':
+        return type_str
+
+    # Assume it's defined in main.py
+    return f'main.{type_str}'
+
+
+def types_to_annotation(types: List[str], benchmark_dir: Path) -> str:
     """Convert a list of types to a single annotation string for TypeSim."""
     if not types:
         return ""
-    # Normalize each type
-    normalized = [normalize_type_for_typesim(t) for t in types]
+    # Normalize each type: denormalize, then qualify user-defined types
+    normalized = [qualify_user_defined_type(normalize_type_for_typesim(t), benchmark_dir) for t in types]
     if len(normalized) == 1:
         return normalized[0]
     # Multiple types -> union
@@ -103,6 +169,8 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
 
     for gt_file in tool_dir.rglob("main_gt.json"):
         result_file = gt_file.parent / "main_result.json"
+        # Set up benchmark context so TypeSim can import user-defined classes
+        benchmark_path = setup_benchmark_context(gt_file.parent)
 
         with open(gt_file) as f:
             gt_data = json.load(f)
@@ -110,6 +178,7 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         if not result_file.exists():
             stats['missing'] += len(gt_data)
             stats['total'] += len(gt_data)
+            cleanup_benchmark_context(benchmark_path)
             continue
 
         with open(result_file) as f:
@@ -151,8 +220,8 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
             # Compute TypeSim score (over ALL ground truth entries)
             if gt_types:
                 if pred_types:
-                    gt_annotation = types_to_annotation(gt_types)
-                    pred_annotation = types_to_annotation(pred_types)
+                    gt_annotation = types_to_annotation(gt_types, gt_file.parent)
+                    pred_annotation = types_to_annotation(pred_types, gt_file.parent)
                     try:
                         typesim_score = get_type_similarity(gt_annotation, pred_annotation)
                     except Exception:
@@ -194,6 +263,9 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
                     stats['exact_functions'] += 1
                 elif is_variable:
                     stats['exact_variables'] += 1
+
+        # Clean up benchmark context after processing this file
+        cleanup_benchmark_context(benchmark_path)
 
     return stats
 
