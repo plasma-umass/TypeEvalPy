@@ -5,6 +5,7 @@ Type comparison using TypeSim for semantic similarity scoring.
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import List
 from tabulate import tabulate
@@ -94,10 +95,10 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
         'typesim_variables_total': 0.0,
         'typesim_perfect_functions': 0,
         'typesim_perfect_variables': 0,
-        'examples': {
-            'typesim_partial': [],  # Examples where TypeSim gave partial credit
-            'typesim_zero': [],     # Examples where TypeSim == 0 (complete mismatch)
-        }
+        # Counters for most common mismatch patterns: (gt_tuple, pred_tuple) -> count
+        'zero_pairs': Counter(),      # TypeSim == 0 (complete mismatch)
+        'partial_pairs': Counter(),   # 0 < TypeSim < 1 (partial match)
+        'partial_scores': {},         # (gt_tuple, pred_tuple) -> score
     }
 
     for gt_file in tool_dir.rglob("main_gt.json"):
@@ -176,28 +177,14 @@ def analyze_with_normalizations(results_dir: Path, tool_name: str):
                     elif is_variable:
                         stats['typesim_perfect_variables'] += 1
 
-                # Save examples where TypeSim gives partial credit but not exact
-                if 0 < typesim_score < 1.0 and not comparison['exact']:
-                    example = {
-                        'file': str(gt_file.relative_to(tool_dir)),
-                        'line': gt_item['line_number'],
-                        'gt': gt_types,
-                        'pred': pred_types,
-                        'score': typesim_score
-                    }
-                    if len(stats['examples']['typesim_partial']) < 5:
-                        stats['examples']['typesim_partial'].append(example)
-
-                # Save examples where TypeSim == 0 (complete mismatch)
-                if typesim_score == 0.0:
-                    example = {
-                        'file': str(gt_file.relative_to(tool_dir)),
-                        'line': gt_item['line_number'],
-                        'gt': gt_types,
-                        'pred': pred_types,
-                    }
-                    if len(stats['examples']['typesim_zero']) < 5:
-                        stats['examples']['typesim_zero'].append(example)
+                # Track most common mismatch patterns
+                if typesim_score == 0.0 and pred_types:
+                    pair = (tuple(gt_types), tuple(pred_types))
+                    stats['zero_pairs'][pair] += 1
+                elif 0 < typesim_score < 1.0 and not comparison['exact']:
+                    pair = (tuple(gt_types), tuple(pred_types))
+                    stats['partial_pairs'][pair] += 1
+                    stats['partial_scores'][pair] = typesim_score
 
             if comparison['exact']:
                 stats['exact'] += 1
@@ -295,16 +282,22 @@ def main():
 
             print(tabulate(detail_data, headers=["Metric", "Count", "Percentage"], tablefmt="simple"))
 
-            # Show examples
-            if stats['examples']['typesim_partial']:
-                print("\n  Examples where TypeSim gave partial credit (0 < score < 1.0):")
-                for ex in stats['examples']['typesim_partial']:
-                    print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}  (score: {ex['score']:.2f})")
+            # Show most common mismatch patterns
+            MAX_EXAMPLES = 5
+            if stats['partial_pairs']:
+                total_partial = sum(stats['partial_pairs'].values())
+                unique_partial = len(stats['partial_pairs'])
+                print(f"\n  Most frequent partial matches (0 < TypeSim < 1): {total_partial} total, {unique_partial} unique")
+                for (gt, pred), count in stats['partial_pairs'].most_common(MAX_EXAMPLES):
+                    score = stats['partial_scores'][(gt, pred)]
+                    print(f"    {count:3d}x  {list(gt)}  ->  {list(pred)}  (score: {score:.2f})")
 
-            if stats['examples']['typesim_zero']:
-                print("\n  Examples where TypeSim == 0 (complete mismatch):")
-                for ex in stats['examples']['typesim_zero']:
-                    print(f"    {ex['file']}:{ex['line']}  GT: {ex['gt']}  Pred: {ex['pred']}")
+            if stats['zero_pairs']:
+                total_zero = sum(stats['zero_pairs'].values())
+                unique_zero = len(stats['zero_pairs'])
+                print(f"\n  Most frequent complete mismatches (TypeSim == 0): {total_zero} total, {unique_zero} unique")
+                for (gt, pred), count in stats['zero_pairs'].most_common(MAX_EXAMPLES):
+                    print(f"    {count:3d}x  {list(gt)}  ->  {list(pred)}")
 
     # Summary
     if not args.latex:
