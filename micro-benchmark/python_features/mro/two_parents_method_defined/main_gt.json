@@ -15,7 +15,6 @@
         "col_offset": 9,
         "function": "B.func",
         "type": [
-            "float",
             "int",
             "str"
         ]
